@@ -15,6 +15,12 @@ postulate
 {-# BUILTIN LEVELSUC  lsuc   #-}
 {-# BUILTIN LEVELMAX  lmax   #-}
 
+_o_ : forall {i j k}
+        {A : Set i}{B : A -> Set j}{C : (a : A) -> B a -> Set k} ->
+        (f : {a : A}(b : B a) -> C a b) ->
+        (g : (a : A) -> B a) ->
+        (a : A) -> C a (g a)
+f o g = \ a -> f (g a)
 \end{code}
 
 %endif
@@ -26,6 +32,7 @@ postulate
 %format Nat = "\D{Nat}"
 %format zero = "\C{zero}"
 %format suc = "\C{suc}"
+%format o = "\F{\circ}"
 
 It might be easy to mistake this chapter for a bland introduction to
 dependently typed programming based on the yawning-already example of
@@ -34,6 +41,9 @@ lists indexed by their length, known to their friends as
 data structures into `shape and contents'. Indeed, the typical
 motivation for introducing vectors is exactly to allow types to
 express shape invariants.
+
+
+\subsection{Zipping Lists of Compatible Shape}
 
 Let us remind ourselves of the situation with ordinary \emph{lists},
 which we may define in Agda as follows:
@@ -229,4 +239,126 @@ I tend to $\alpha$-convert and realign such programs manually, yielding
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
 zip1 <>         <>        = <>
 zip1 (s , ss)   (t , ts)  = (s , t) , zip1 ss ts
+\end{code}
+
+%format vec = "\F{vec}"
+%format vapp = "\F{vapp}"
+\begin{exercise}[|vec|]
+Complete the implementation of
+\begin{spec}
+vec : forall {n X} -> X -> Vec X n
+vec {n} x = ?
+\end{spec}
+using only control codes and arrow keys.
+\nudge{Why is there no specification?}
+%if False
+\begin{code}
+vec : forall {n X} -> X -> Vec X n
+vec {zero} x = <>
+vec {suc n} x = x , vec x
+\end{code}
+%endif
+(Note the brace notation, making the implicit |n| explicit. It is not unusual
+for arguments to be inferrable at usage sites from type information, but
+none the less computationally relevant.)
+\end{exercise}
+
+%format vapp = "\F{vapp}"
+\begin{exercise}[vector application]
+Complete the implementation of
+\begin{spec}
+vapp :  forall {n S T} -> Vec (S -> T) n -> Vec S n -> Vec T n
+vapp fs ss = {!!}
+\end{spec}
+using only control codes and arrow keys. The function should apply
+the functions from its first input vector to the arguments in corresponding
+positions from its second input vector, yielding values in corresponding positions
+in the output.
+%if False
+\begin{code}
+vapp :  forall {n S T} -> Vec (S -> T) n -> Vec S n -> Vec T n
+vapp <> <> = <>
+vapp (f , fs) (s , ss) = f s , vapp fs ss
+\end{code}
+%endif
+\end{exercise}
+
+%format vmap = "\F{vmap}"
+%format zip2 = zip0
+\begin{exercise}[vmap]
+Using |vec| and |vapp|, define the functorial `map' operator for vectors,
+applying the given function to each element.
+\begin{spec}
+vmap : forall {n S T} -> (S -> T) -> Vec S n -> Vec T n
+vmap f ss = ?
+\end{spec}
+\begin{code}
+vmap : forall {n S T} -> (S -> T) -> Vec S n -> Vec T n
+vmap f ss = vapp (vec f) ss
+\end{code}
+Note that you can make Agsy notice a defined function by writing its name
+as a hint in the relevant hole before you |[C-c C-a]|.
+\end{exercise}
+
+\begin{exercise}[|zip2|]
+Using |vec| and |vapp|, give an alternative definition of |zip2|.
+\begin{spec}
+zip2 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
+zip2 ss ts = ?
+\end{spec}
+\begin{code}
+zip2 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
+zip2 ss ts = vapp (vapp (vec _,_) ss) ts
+\end{code}
+\end{exercise}
+
+
+\section{Applicative and Traversable Structure}
+
+The |vec| and |vapp| operations from the previous section equip
+vectors with the structure of an \emph{applicative functor}.
+\nudge{For now, I shall just work in |Set|, but we should remember
+to break out and live, categorically, later.}
+Let's pack them up as a record:
+
+\nudge{Why |Set1|?}
+\begin{code}
+record EndoFunctor (F : Set -> Set) : Set1 where
+  field
+    map  : forall {S T} -> (S -> T) -> F S -> F T
+open EndoFunctor
+
+record Applicative (F : Set -> Set) : Set1 where
+  field
+    pure    : forall {X} -> X -> F X
+    _<*>_   : forall {S T} -> F (S -> T) -> F S -> F T
+  itsEndoFunctor : EndoFunctor F
+  itsEndoFunctor = record { map = _<*>_ o pure }
+open Applicative
+
+applicativeVec : forall {n} -> Applicative \ X -> Vec X n
+applicativeVec = record { pure = vec; _<*>_ = vapp }
+\end{code}
+
+There are lots of applicative functors about the place. Here's a
+famous one:
+\begin{code}
+applicativeFun : forall {S} -> Applicative \ X -> S -> X
+applicativeFun = record
+  {  pure    = \ x s -> x              -- also known as K (drop environment)
+  ;  _<*>_   = \ f a s -> f s (a s)    -- also known as S (share environment)
+  }
+\end{code}
+
+Monadic structure induces applicative structure:
+\begin{code}
+record Monad (F : Set -> Set) : Set1 where
+  field
+    return  : forall {X} -> X -> F X
+    _>>=_   : forall {S T} -> F S -> (S -> F T) -> F T
+  itsApplicative : Applicative F
+  itsApplicative = record
+    {  pure   = return
+    ;  _<*>_  = \ ff fs -> ff >>= \ f -> fs >>= \ s -> return (f s) }
+open Monad
 \end{code}
