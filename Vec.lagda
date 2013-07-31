@@ -542,6 +542,35 @@ applicativeComp aF aG = record
 %endif
 \end{exe}
 
+\begin{exe}[|Monoid| makes |Applicative|]
+Let us give the signature for a monoid thus:
+%format Monoid = "\D{Monoid}"
+%format neut = "\F{\varepsilon}"
+%format & = "\bullet"
+%format _&_ = "\us{" & "}"
+\begin{spec}
+record Monoid (X : Set) : Set where
+  infixr 4 _&_
+  field
+    neut  : X
+    _&_   : X -> X -> X
+  monoidApplicative : Applicative \ _ -> X
+  monoidApplicative = ?
+open Monoid {{...}} -- it's not obvious that we'll avoid ambiguity
+\end{spec}
+Complete the |Applicative| so that it behaves like the |Monoid|.
+\begin{code}
+record Monoid (X : Set) : Set where
+  infixr 4 _&_
+  field
+    neut  : X
+    _&_   : X -> X -> X
+  monoidApplicative : Applicative \ _ -> X
+  monoidApplicative = record { pure = \ x -> neut; _<*>_ = _&_ }
+open Monoid {{...}} -- it's not obvious that we'll avoid ambiguity
+\end{code}
+\end{exe}
+
 \begin{exe}[|Applicative| product]
 Show by construction that the pointwise product of |Applicative|s is
 |Applicative|.
@@ -553,7 +582,7 @@ Show by construction that the pointwise product of |Applicative|s is
 \begin{code}
 record Traversable (F : Set -> Set) : Set1 where
   field
-    traverse :  forall {G S T}{{_ : Applicative G}} ->
+    traverse :  forall {G S T}{{AG : Applicative G}} ->
                 (S -> G T) -> F S -> G (F T)
   traversableEndoFunctor : EndoFunctor F
   traversableEndoFunctor = record { map = traverse }
@@ -586,6 +615,18 @@ transpose = traverse id
 \end{code}
 %endif
 \end{exe}
+
+%format crush = "\F{crush}"
+We may define the |crush| operation, accumulating values in a monoid stored in
+a |Traversable| structure:
+\nudge{I was going to set this as an exercise, but it's mostly instructive
+in how to override implicit and instance arguments.}
+\begin{code}
+crush :  forall {F X Y}{{TF : Traversable F}}{{M : Monoid Y}} ->
+         (X -> Y) -> F X -> Y
+crush {{M = M}} = traverse {T = One}{{AG = monoidApplicative {{M}}}}
+\end{code}
+
 
 \begin{exe}[|Traversable| functors]
 Show that |Traversable| is closed under identity and composition.
@@ -711,10 +752,10 @@ suc x *Nat y = y +Nat (x *Nat y)
 Let us construct sums and products of normal functors.
 \begin{code}
 _+N_ : Normal -> Normal -> Normal
-(SSh / Ssz) +N (TSh / Tsz) = (SSh + TSh) / ^ Ssz <?> Tsz
+(ShF / szF) +N (ShG / szG) = (ShF + ShG) / ^ szF <?> szG
 
 _*N_ : Normal -> Normal -> Normal
-(SSh / Ssz) *N (TSh / Tsz) = (SSh * TSh) / ^ \ s t -> Ssz s +Nat Tsz t
+(ShF / szF) *N (ShG / szG) = (ShF * ShG) / ^ \ f g -> szF f +Nat szG g
 \end{code}
 
 Of course, it is one thing to construct these binary operators on |Normal|,
@@ -723,8 +764,8 @@ but quite another to show they are worthy of their names.
 %format nInj = "\F{nInj}"
 \begin{code}
 nInj : forall {X}(F G : Normal) -> <! F !>N X + <! G !>N X -> <! F +N G !>N X
-nInj F G (tt , FSh , xs) = (tt , FSh) , xs
-nInj F G (ff , GSh , xs) = (ff , GSh) , xs
+nInj F G (tt , ShF , xs) = (tt , ShF) , xs
+nInj F G (ff , ShG , xs) = (ff , ShG) , xs
 \end{code}
 
 Now, we could implement the other direction of the isomorphism, but an
@@ -741,8 +782,8 @@ data _^-1_ {S T : Set}(f : S -> T) : T -> Set where
 Let us now show that |nInj| is surjective.
 \begin{code}
 nCase : forall {X} F G (s : <! F +N G !>N X) -> nInj F G ^-1 s
-nCase F G ((tt , FSh) , xs) = from (tt , FSh , xs)
-nCase F G ((ff , GSh) , xs) = from (ff , GSh , xs)
+nCase F G ((tt , ShF) , xs) = from (tt , ShF , xs)
+nCase F G ((ff , ShG) , xs) = from (ff , ShG , xs)
 \end{code}
 That is, we have written more or less the other direction of the iso,
 but we have acquired some of the correctness proof for the cost of
@@ -776,7 +817,7 @@ vectors will you need in order to define it?
 %format nPair = "\F{nPair}"
 \begin{spec}
 nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
-nPair F G fgx = ?
+nPair F G fxgx = ?
 \end{spec}
 Show that your constructor is surjective.
 %if False
@@ -786,8 +827,46 @@ _++_ : forall {m n X} -> Vec X m -> Vec X n -> Vec X (m +Nat n)
 (x , xs) ++ ys = x , (xs ++ ys)
 
 nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
-nPair F G ((FSh , xs) , (GSh , ys)) = (FSh , GSh) , xs ++ ys
+nPair F G ((ShF , xs) , (ShG , ys)) = (ShF , ShG) , xs ++ ys
 \end{code}
 %% too lazy for surj, the now
 %endif
 \end{exe}
+
+We have already seen that the identity functor |VecN 1| is |Normal|, but can
+we define composition?
+%format oN = "\F{\circ_{\!N}}"
+%format _oN_ = "\us{" oN "}"
+\begin{spec}
+_oN_ : Normal -> Normal -> Normal
+F oN (ShG / szG) = ? / ?
+\end{spec}
+To choose the shape for the composite, we need to know the outer shape, and
+then the inner shape at each element position. That is:
+\begin{spec}
+_oN_ : Normal -> Normal -> Normal
+F oN (ShG / szG) = <! F !>N ShG / {!!}
+\end{spec}
+Now, the composite must have a place for each element of each inner structure,
+so the size of the whole is the sum of the sizes of its parts. That is to say,
+we must traverse the shape, summing the sizes of each inner shape therein.
+Indeed, we can use |traverse|, given that |Nat| is a monoid for |+N| and
+that |Normal| functors are traversable because vectors are.
+%format sumMonoid = "\F{sumMonoid}"
+%format normalTraversable = "\F{normalTraversable}"
+\begin{code}
+sumMonoid : Monoid Nat
+sumMonoid = record { neut = 0; _&_ = _+Nat_ }
+
+normalTraversable : (F : Normal) -> Traversable <! F !>N
+normalTraversable F = record
+  { traverse = \ {{aG}} f -> ^ \ s xs -> pure {{aG}}  (_,_ s) <*> traverse f xs }
+\end{code}
+
+Armed with this structure, we can implement the composite size operator as a
+|crush|.
+\begin{code}
+_oN_ : Normal -> Normal -> Normal
+F oN (ShG / szG) = <! F !>N ShG / crush {{normalTraversable F}} szG
+\end{code}
+
