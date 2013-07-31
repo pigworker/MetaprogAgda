@@ -411,7 +411,8 @@ zip2 ss ts = vapp (vapp (vec _,_) ss) ts
 %format pure = "\F{pure}"
 %format <*> = "\F{\circledast}"
 %format _<*>_ = "\_\!" <*> "\!\_"
-%format itsEndoFunctor = "\F{itsEndoFunctor}"
+%format applicativeEndoFunctor = "\F{applicativeEndoFunctor}"
+%format traversableEndoFunctor = "\F{traversableEndoFunctor}"
 %format applicativeVec = "\F{applicativeVec}"
 %format endoFunctorVec = "\F{endoFunctorVec}"
 %format applicativeFun = "\F{applicativeFun}"
@@ -451,8 +452,8 @@ record Applicative (F : Set -> Set) : Set1 where
   field
     pure    : forall {X} -> X -> F X
     _<*>_   : forall {S T} -> F (S -> T) -> F S -> F T
-  itsEndoFunctor : EndoFunctor F
-  itsEndoFunctor = record { map = _<*>_ o pure }
+  applicativeEndoFunctor : EndoFunctor F
+  applicativeEndoFunctor = record { map = _<*>_ o pure }
 open Applicative {{...}}
 \end{code}
 The |Applicative F| structure decomposes |F|'s |map| as the ability to make
@@ -464,7 +465,7 @@ the context with suitable candidates for |Vec|:
 applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
 applicativeVec  = record { pure = vec; _<*>_ = vapp }
 endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
-endoFunctorVec  = itsEndoFunctor
+endoFunctorVec  = applicativeEndoFunctor
 \end{code}
 Indeed, the definition of |endoFunctorVec| already makes use of way
 |itsEndoFunctor| searches the context and finds |applicativeVec|.
@@ -519,6 +520,27 @@ monadVec = record
 \begin{exe}[|Applicative| identity and composition]
 Show by construction that the identity endofunctor is |Applicative|, and that
 the composition of |Applicative|s is |Applicative|.
+%format applicativeId = "\F{applicativeId}"
+%format applicativeComp = "\F{applicativeComp}"
+\begin{spec}
+applicativeId : Applicative id
+applicativeId = ?
+
+applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
+applicativeComp aF aG = ?
+\end{spec}
+%if False
+\begin{code}
+applicativeId : Applicative id
+applicativeId = record { pure = id; _<*>_ = id }
+
+applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
+applicativeComp aF aG = record
+  {  pure   = \ x    -> pure {{aF}} (pure x)
+  ;  _<*>_  = \ f s  -> pure {{aF}} _<*>_ <*> f <*> s
+  }
+\end{code}
+%endif
 \end{exe}
 
 \begin{exe}[|Applicative| product]
@@ -534,17 +556,21 @@ record Traversable (F : Set -> Set) : Set1 where
   field
     traverse :  forall {G S T}{{_ : Applicative G}} ->
                 (S -> G T) -> F S -> G (F T)
+  traversableEndoFunctor : EndoFunctor F
+  traversableEndoFunctor = record { map = traverse }
 open Traversable {{...}}
 \end{code}
 
 %format vtr = "\F{vtr}"
+\nudge{The explicit |aG| became needed after I introduced the
+|applicativeId| exercise, making resolution ambiguous.}
 \begin{code}
 traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
 traversableVec = record { traverse = vtr } where
   vtr :  forall {n G S T}{{_ : Applicative G}} ->
          (S -> G T) -> Vec S n -> G (Vec T n)
-  vtr f <>        = pure <>
-  vtr f (s , ss)  = pure _,_ <*> f s <*> vtr f ss
+  vtr {{aG}} f <>        = pure {{aG}} <>
+  vtr {{aG}} f (s , ss)  = pure {{aG}} _,_ <*> f s <*> vtr f ss
 \end{code}
 
 %format transpose = "\F{transpose}"
@@ -596,11 +622,26 @@ open Normal
 infixr 0 _/_
 \end{code}
 
-Wait! What? The type |Sg (S : Set) (T : S -> Set)| has elements
-|(s : S) , (t : T s)|, so that the type of the second component depends
-on the value of the first. From |p : Sg S T|, we may project
-|fst p : S| and |snd p : T (fst p)|, but I also define |^| to be a low precedence
-currying operator, so that |^ \ s t -> ...| gives access to the components.
+%format VecN = "\F{VecN}"
+%format ListN = "\F{ListN}"
+
+Let us have two examples.
+Vectors are the normal functors with a unique shape. Lists are the normal functors
+whose shape is their size.
+\begin{code}
+VecN : Nat -> Normal
+VecN n = One / pure n
+
+ListN : Normal
+ListN = Nat / id
+\end{code}
+
+Before we go any further, let us establish that the type |Sg (S : Set)
+(T : S -> Set)| has elements |(s : S) , (t : T s)|, so that the type
+of the second component depends on the value of the first. From |p :
+Sg S T|, we may project |fst p : S| and |snd p : T (fst p)|, but I
+also define |^| to be a low precedence currying operator, so that |^ \
+s t -> ...| gives access to the components.
 
 On the one hand, we may take |S * T = Sg S \ _ -> T|
 and generalize the binary product to its dependent version. On the
@@ -683,6 +724,7 @@ nInj F G (tt , FSh , xs) = (tt , FSh) , xs
 nInj F G (ff , GSh , xs) = (ff , GSh) , xs
 \end{code}
 
+<<<<<<< HEAD
 Now, we could implement the other direction of the isomorphism, but an
 alternative is to define the \emph{inverse image}.
 
