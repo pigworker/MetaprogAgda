@@ -21,6 +21,9 @@ _o_ : forall {i j k}
         (g : (a : A) -> B a) ->
         (a : A) -> C a (g a)
 f o g = \ a -> f (g a)
+
+id : forall {k}{X : Set k} -> X -> X
+id x = x
 \end{code}
 
 %endif
@@ -32,6 +35,7 @@ f o g = \ a -> f (g a)
 %format Nat = "\D{Nat}"
 %format zero = "\C{zero}"
 %format suc = "\C{suc}"
+%format id = "\F{id}"
 %format o = "\F{\circ}"
 
 It might be easy to mistake this chapter for a bland introduction to
@@ -69,12 +73,8 @@ _*_ : {l : Level} -> Set l -> Set l -> Set l
 S * T = Sg S \ _ -> T
 
 record One {l : Level} : Set l where
-<<<<<<< HEAD
   constructor <>
 open One
-=======
-  constructor _<>_
->>>>>>> 2c7c885bf99ae0725e55a274dfb50a03720ee166
 \end{code}
 %endif
 
@@ -167,8 +167,9 @@ not measured.
 
 \section{Vectors}
 
-Dependent types allow us to \emph{internalize} length invariants in lists,
-yielding \emph{vectors}.
+Dependent types allow us to \emph{internalize} length invariants in
+lists, yielding \emph{vectors}. The index describes the shape of the
+list, thus offers no real choice of constructors.
 
 %format Vec = "\D{Vec}"
 \begin{code}
@@ -191,17 +192,6 @@ return types, so it is sensible to put parameters left of
 |:|. However, as we shall see, such arguments may be freely
 instantiated in \emph{recursive} positions, so we should not presume
 that they are necessarily parameters.
-
-%format zip1 = zip0
-
-Now, that we have numbers, we may define lists indexed by length, often known as \emph{vectors}. The index describes the shape of the list, thus offers no real
-choice of constructors.
-%format Vec = "\D{Vec}"
-\begin{code}
-data Vec (X : Set) : Nat -> Set where
-  <>   : Vec X zero
-  _,_  : {n : Nat} -> X -> Vec X n -> Vec X (suc n)
-\end{code}
 
 %format zip1 = zip0
 Let us now develop |zip1| for vectors, stating the length invariant
@@ -374,10 +364,12 @@ applying the given function to each element.
 vmap : forall {n S T} -> (S -> T) -> Vec S n -> Vec T n
 vmap f ss = ?
 \end{spec}
+%if False
 \begin{code}
 vmap : forall {n S T} -> (S -> T) -> Vec S n -> Vec T n
 vmap f ss = vapp (vec f) ss
 \end{code}
+%endif
 Note that you can make Agsy notice a defined function by writing its name
 as a hint in the relevant hole before you |[C-c C-a]|.
 \end{exe}
@@ -388,41 +380,81 @@ Using |vec| and |vapp|, give an alternative definition of |zip2|.
 zip2 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
 zip2 ss ts = ?
 \end{spec}
+%if False
 \begin{code}
 zip2 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
 zip2 ss ts = vapp (vapp (vec _,_) ss) ts
 \end{code}
+%endif
 \end{exe}
 
 
 \section{Applicative and Traversable Structure}
 
+%format EndoFunctor = "\D{EndoFunctor}"
+%format Applicative = "\D{Applicative}"
+%format Monad = "\D{Monad}"
+%format map = "\F{map}"
+%format pure = "\F{pure}"
+%format <*> = "\F{\otimes}"
+%format _<*>_ = "\_\!" <*> "\!\_"
+%format itsEndoFunctor = "\F{itsEndoFunctor}"
+%format applicativeVec = "\F{applicativeVec}"
+%format applicativeFun = "\F{applicativeFun}"
+%format itsApplicative = "\F{itsApplicative}"
+%format return = "\F{return}"
+%format >>= = "\F{>\!\!>\!\!=}"
+%format _>>=_ = "\_\!" >>= "\!\_"
+
 The |vec| and |vapp| operations from the previous section equip
 vectors with the structure of an \emph{applicative functor}.
 \nudge{For now, I shall just work in |Set|, but we should remember
 to break out and live, categorically, later.}
-Let's pack them up as a record:
-
+Before we get to |Applicative|, let us first say what is an |EndoFunctor|:
 \nudge{Why |Set1|?}
 \begin{code}
 record EndoFunctor (F : Set -> Set) : Set1 where
   field
     map  : forall {S T} -> (S -> T) -> F S -> F T
-open EndoFunctor
+open EndoFunctor {{...}}
+\end{code}
+The record declaration creates new types |EndoFunctor F| and a new \emph{module},
+|EndoFunctor| containing a function |EndoFunctor.map| which projects the |map|
+field from a record. The |open| declaration brings |map| into top level scope,
+and the |{{...}}| syntax indicates that |map|'s record argument is an
+\emph{instance argument}. Instance arguments are found by searching the context
+for something of the required type, succeeding if exactly one candidate is found.
 
+Of course, we should ensure that such structures should obey the functor laws,
+with |map| preserving identity and composition. Dependent types allow us to
+state and prove these laws, as we shall see shortly.
+
+First, however, let us refine |EndoFunctor| to |Applicative|.
+\begin{code}
 record Applicative (F : Set -> Set) : Set1 where
+  infixl 2 _<*>_
   field
     pure    : forall {X} -> X -> F X
     _<*>_   : forall {S T} -> F (S -> T) -> F S -> F T
   itsEndoFunctor : EndoFunctor F
   itsEndoFunctor = record { map = _<*>_ o pure }
-open Applicative
-
-applicativeVec : forall {n} -> Applicative \ X -> Vec X n
-applicativeVec = record { pure = vec; _<*>_ = vapp }
+open Applicative {{...}}
 \end{code}
+The |Applicative F| structure decomposes |F|'s |map| as the ability to make
+`constant' |F|-structures and closure under application.
 
-There are lots of applicative functors about the place. Here's a
+Given that instance arguments are collected from the context, let us seed
+the context with suitable candidates for |Vec|:
+\begin{code}
+applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
+applicativeVec  = record { pure = vec; _<*>_ = vapp }
+endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
+endoFunctorVec  = itsEndoFunctor
+\end{code}
+Indeed, the definition of |endoFunctorVec| already makes use of the fact
+that |itsEndoFunctor| searches the context and finds |applicativeVec|.
+
+There are lots of applicative functors about the place. Here's another
 famous one:
 \begin{code}
 applicativeFun : forall {S} -> Applicative \ X -> S -> X
@@ -442,6 +474,74 @@ record Monad (F : Set -> Set) : Set1 where
   itsApplicative = record
     {  pure   = return
     ;  _<*>_  = \ ff fs -> ff >>= \ f -> fs >>= \ s -> return (f s) }
-open Monad
+open Monad {{...}}
 \end{code}
 
+%format monadVec =  "\F{monadVec}"
+\begin{exe}[|Vec| monad}
+Construct a |Monad| satisfying the |Monad| laws
+\begin{spec}
+monadVec : {n : Nat} -> Monad \ X -> Vec X n
+monadVec = ?
+\end{spec}
+such that |itsApplicative| agrees extensionally with |applicativeVec|.
+%if False
+\begin{code}
+monadVec : {n : Nat} -> Monad \ X -> Vec X n
+monadVec = record
+  {   return  = pure
+  ;   _>>=_   = \ fs k -> diag (map k fs)
+  }  where
+     tail : forall {n X} -> Vec X (suc n) -> Vec X n
+     tail (x , xs) = xs
+     diag : forall {n X} -> Vec (Vec X n) n -> Vec X n
+     diag <>                = <>
+     diag ((x , xs) , xss)  = x , diag (map tail xss)
+\end{code}
+%endif
+\end{exe}
+
+\begin{exe}[|Applicative| identity and composition]
+Show by construction that the identity endofunctor is |Applicative|, and that
+the composition of |Applicative|s is |Applicative|.
+\end{exe}
+
+\begin{exe}[|Applicative| product}
+Show by construction that the pointwise product of |Applicative|s is
+|Applicative|.
+\end{exe}
+
+%format Traversable = "\D{Traversable}"
+%format traverse = "\F{traverse}"
+%format traversableVec = "\F{traversableVec}"
+\begin{code}
+record Traversable (F : Set -> Set) : Set1 where
+  field
+    traverse :  forall {G S T}{{_ : Applicative G}} ->
+                (S -> G T) -> F S -> G (F T)
+open Traversable {{...}}
+\end{code}
+
+\begin{code}
+traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
+traversableVec = record { traverse = vtr } where
+  vtr :  forall {n G S T}{{_ : Applicative G}} ->
+         (S -> G T) -> Vec S n -> G (Vec T n)
+  vtr f <>        = pure <>
+  vtr f (s , ss)  = pure _,_ <*> f s <*> vtr f ss
+\end{code}
+
+%format transpose = "\F{transpose}"
+\begin{exe}[transpose]
+Implement matrix transposition in one line.
+\begin{spec}
+transpose : forall {m n X} -> Vec (Vec X n) m -> Vec (Vec X m) n
+transpose = ?
+\end{spec}
+%if False
+\begin{code}
+transpose : forall {m n X} -> Vec (Vec X n) m -> Vec (Vec X m) n
+transpose = traverse id
+\end{code}
+%endif
+\end{exe}
