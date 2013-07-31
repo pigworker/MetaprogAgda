@@ -551,3 +551,37 @@ transpose = traverse id
 \end{code}
 %endif
 \end{exe}
+
+\begin{exe}[|Traversable| functors]
+Show that |Traversable| is closed under identity and composition.
+What other structure does it preserve?
+\end{exe}
+
+
+\section{Normal Functors}
+
+A \emph{normal} functor is given, up to isomorphism, by a set of \emph{shapes}
+and a function which assigns to each shape a \emph{size}. It is interpreted
+as the \emph{dependent pair} of a shape, |s|, and a vector of elements whose
+length is the size of |s|.
+
+%format Normal = "\D{Normal}"
+%format Shape = "\F{Shape}"
+%format size = "\F{size}"
+%format / = "\C{/}"
+%format _/_ = "\_\!" / "\!\_"
+%format <! = "\F{\llbracket}"
+%format !> = "\F{\rrbracket}"
+%format !>N = !> "_{\F{N}}"
+%format <!_!>N = <! "\!" _ "\!" !>N
+\begin{code}
+record Normal : Set1 where
+  constructor _/_
+  field
+    Shape  : Set
+    size   : Shape -> Nat
+  <!_!>N : Set -> Set
+  <!_!>N X = Sg Shape \ s -> Vec X (size s)
+open Normal
+\end{code}
+
