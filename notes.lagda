@@ -69,6 +69,7 @@
 \newtheorem{exe}{Exercise}[chapter]
 
 %format rewrite = "\mathkw{rewrite}"
+%format constructor = "\mathkw{constructor}"
 
 %format ? = "\orange{?}"
 
