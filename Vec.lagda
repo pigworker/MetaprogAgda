@@ -91,10 +91,9 @@ open One
 %format * = "\F{\times}"
 %format + = "\F{+}"
 %format _+_ = "\_\!" + "\!\_"
-%format ^ = "\scriptstyle{\Lambda}"
+%format ^ = "{\scriptstyle\Lambda}"
 %format One = "\D{One}"
 %format zip0 = "\F{zip}"
-%format cu = "
 
 The classic operation which morally involves a shape invariant is |zip0|, taking
 two lists, one of |S|s, the other of |T|s, and yielding a list of pairs in the product
@@ -679,16 +678,18 @@ do with numbers, which is why I have used |*| and |+| for |Set|s. Developing a
 library of normal functors will, however, necessitate arithmetic on sizes as
 well as shapes.
 
-%format +Nat = + "_" Nat
-%format *Nat = * "_" Nat
+%format +Nat = + "_{\!" Nat "}"
+%format *Nat = * "_{\!" Nat "}"
+%format _+Nat_ = "\us{" +Nat "}"
+%format _*Nat_ = "\us{" *Nat "}"
 \begin{exe}[unary arithmetic]
 Implement addition and multiplication for numbers.
 \begin{spec}
-_+N_ : Nat -> Nat -> Nat
-x +N y = ?
+_+Nat_ : Nat -> Nat -> Nat
+x +Nat y = ?
 
-_*N_ : Nat -> Nat -> Nat
-x *N y = ?
+_*Nat_ : Nat -> Nat -> Nat
+x *Nat y = ?
 \end{spec}
 %if False
 \begin{code}
@@ -703,8 +704,10 @@ suc x *Nat y = y +Nat (x *Nat y)
 %endif
 \end{exe}
 
-%format +N = + "_\F{N}"
-%format *N = * "_\F{N}"
+%format +N = + "_{\!\F{N}}"
+%format _+N_ = "\us{" +N "}"
+%format *N = * "_{\!\F{N}}"
+%format _*N_ = "\us{" *N "}"
 Let us construct sums and products of normal functors.
 \begin{code}
 _+N_ : Normal -> Normal -> Normal
@@ -724,7 +727,6 @@ nInj F G (tt , FSh , xs) = (tt , FSh) , xs
 nInj F G (ff , GSh , xs) = (ff , GSh) , xs
 \end{code}
 
-<<<<<<< HEAD
 Now, we could implement the other direction of the isomorphism, but an
 alternative is to define the \emph{inverse image}.
 
@@ -735,7 +737,7 @@ data _^-1_ {S T : Set}(f : S -> T) : T -> Set where
   from : (s : S) -> f ^-1 f s
 \end{code}
 
-%format nInj = "\F{nInj}"
+%format nCase = "\F{nCase}"
 Let us now show that |nInj| is surjective.
 \begin{code}
 nCase : forall {X} F G (s : <! F +N G !>N X) -> nInj F G ^-1 s
