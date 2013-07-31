@@ -70,6 +70,8 @@
 
 %format rewrite = "\mathkw{rewrite}"
 
+%format ? = "\orange{?}"
+
 \begin{document}
 
 \title{Dependently Typed Metaprogramming: \\ (in Agda)}

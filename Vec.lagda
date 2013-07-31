@@ -29,6 +29,7 @@ id x = x
 %endif
 
 %format Set = "\D{Set}"
+%format Set1 = Set "_{\D{1}}"
 %format List = "\D{List}"
 %format <> = "\C{\langle\rangle}"
 %format , = "\red{,}\,"
@@ -207,9 +208,11 @@ default, as indicated by the |{..}| after the |forall|.  We write a
 left-hand-side naming the explicit inputs, which we declare equal to
 an unknown |?|. Loading the file with |[C-c C-l]|, we find that Agda
 checks the unfinished program, turning the |?| into labelled braces,
+%format (HOLE (x) n) = { x } "\!_{" n "}"
+%format GAP = "\;"
 \begin{spec}
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip1 ss ts = {!!}0
+zip1 ss ts = (HOLE GAP 0)
 \end{spec}
 and tells us, in the information window,
 \begin{spec}
@@ -243,7 +246,7 @@ hole and issue the `case-split' command |[C-c C-c]|.
 
 \begin{spec}
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip1 ss ts = {ss [C-c C-c]}0
+zip1 ss ts = (HOLE (ss [C-c C-c]) 0)
 \end{spec}
 
 Agda responds by editing our source code, replacing the single line of
@@ -251,8 +254,8 @@ defintion by two more specific cases.
 
 \begin{spec}
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip1 <> ts = { }0
-zip1 (x , ss) ts = { }1
+zip1 <> ts = (HOLE GAP 0)
+zip1 (x , ss) ts = (HOLE GAP 1)
 \end{spec}
 
 Moreover, we gain the refined type information
@@ -268,14 +271,14 @@ typed programming.
 Now, when we split |ts| in the |0| case, we get
 \begin{spec}
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip1 <> <> = { }0
-zip1 (x , ss) ts = { }1
+zip1 <> <> = (HOLE GAP 0)
+zip1 (x , ss) ts = (HOLE GAP 1)
 \end{spec}
 and in the |suc| case,
 \begin{spec}
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip1 <> <> = { }0
-zip1 (x , ss) (x1 , ts) = { }1
+zip1 <> <> = (HOLE GAP 0)
+zip1 (x , ss) (x1 , ts) = (HOLE GAP 1)
 \end{spec}
 as the more specific type now determines the shape. Sadly, Agda is not
 very clever\nudge{It's not even as clever as Epigram.} about choosing names,
@@ -357,7 +360,7 @@ vapp (f , fs) (s , ss) = f s , vapp fs ss
 
 %format vmap = "\F{vmap}"
 %format zip2 = zip0
-\begin{exe}[vmap]
+\begin{exe}[|vmap|]
 Using |vec| and |vapp|, define the functorial `map' operator for vectors,
 applying the given function to each element.
 \begin{spec}
@@ -396,10 +399,11 @@ zip2 ss ts = vapp (vapp (vec _,_) ss) ts
 %format Monad = "\D{Monad}"
 %format map = "\F{map}"
 %format pure = "\F{pure}"
-%format <*> = "\F{\otimes}"
+%format <*> = "\F{\circledast}"
 %format _<*>_ = "\_\!" <*> "\!\_"
 %format itsEndoFunctor = "\F{itsEndoFunctor}"
 %format applicativeVec = "\F{applicativeVec}"
+%format endoFunctorVec = "\F{endoFunctorVec}"
 %format applicativeFun = "\F{applicativeFun}"
 %format itsApplicative = "\F{itsApplicative}"
 %format return = "\F{return}"
@@ -418,8 +422,9 @@ record EndoFunctor (F : Set -> Set) : Set1 where
     map  : forall {S T} -> (S -> T) -> F S -> F T
 open EndoFunctor {{...}}
 \end{code}
-The record declaration creates new types |EndoFunctor F| and a new \emph{module},
-|EndoFunctor| containing a function |EndoFunctor.map| which projects the |map|
+The above record declaration creates new types |EndoFunctor F| and a new
+\emph{module}, |EndoFunctor|, containing a function, |EndoFunctor|.|map|,
+which projects the |map|
 field from a record. The |open| declaration brings |map| into top level scope,
 and the |{{...}}| syntax indicates that |map|'s record argument is an
 \emph{instance argument}. Instance arguments are found by searching the context
@@ -451,8 +456,8 @@ applicativeVec  = record { pure = vec; _<*>_ = vapp }
 endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
 endoFunctorVec  = itsEndoFunctor
 \end{code}
-Indeed, the definition of |endoFunctorVec| already makes use of the fact
-that |itsEndoFunctor| searches the context and finds |applicativeVec|.
+Indeed, the definition of |endoFunctorVec| already makes use of way
+|itsEndoFunctor| searches the context and finds |applicativeVec|.
 
 There are lots of applicative functors about the place. Here's another
 famous one:
@@ -478,7 +483,7 @@ open Monad {{...}}
 \end{code}
 
 %format monadVec =  "\F{monadVec}"
-\begin{exe}[|Vec| monad}
+\begin{exe}[|Vec| monad]
 Construct a |Monad| satisfying the |Monad| laws
 \begin{spec}
 monadVec : {n : Nat} -> Monad \ X -> Vec X n
@@ -506,7 +511,7 @@ Show by construction that the identity endofunctor is |Applicative|, and that
 the composition of |Applicative|s is |Applicative|.
 \end{exe}
 
-\begin{exe}[|Applicative| product}
+\begin{exe}[|Applicative| product]
 Show by construction that the pointwise product of |Applicative|s is
 |Applicative|.
 \end{exe}
@@ -522,6 +527,7 @@ record Traversable (F : Set -> Set) : Set1 where
 open Traversable {{...}}
 \end{code}
 
+%format vtr = "\F{vtr}"
 \begin{code}
 traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
 traversableVec = record { traverse = vtr } where
@@ -532,7 +538,7 @@ traversableVec = record { traverse = vtr } where
 \end{code}
 
 %format transpose = "\F{transpose}"
-\begin{exe}[transpose]
+\begin{exe}[|transpose|]
 Implement matrix transposition in one line.
 \begin{spec}
 transpose : forall {m n X} -> Vec (Vec X n) m -> Vec (Vec X m) n
