@@ -33,7 +33,7 @@ id x = x
 %format List = "\D{List}"
 %format <> = "\C{\langle\rangle}"
 %format , = "\red{,}\,"
-%format Nat = "\D{Nat}"
+%format Nat = "\D{\mathbb{N}}"
 %format zero = "\C{zero}"
 %format suc = "\C{suc}"
 %format id = "\F{id}"
@@ -73,6 +73,12 @@ open Sg
 _*_ : {l : Level} -> Set l -> Set l -> Set l
 S * T = Sg S \ _ -> T
 
+^_ :  forall {k l}{S : Set k}{T : S -> Set k}{P : Sg S T -> Set l} ->
+      ((s : S)(t : T s) -> P (s , t)) ->
+      (p : Sg S T) -> P p
+(^ p) (s , t) = p s t
+infixr 1 ^_
+
 record One {l : Level} : Set l where
   constructor <>
 open One
@@ -83,8 +89,12 @@ open One
 %format fst = "\F{fst}"
 %format snd = "\F{snd}"
 %format * = "\F{\times}"
+%format + = "\F{+}"
+%format _+_ = "\_\!" + "\!\_"
+%format ^ = "\scriptstyle{\Lambda}"
 %format One = "\D{One}"
 %format zip0 = "\F{zip}"
+%format cu = "
 
 The classic operation which morally involves a shape invariant is |zip0|, taking
 two lists, one of |S|s, the other of |T|s, and yielding a list of pairs in the product
@@ -405,7 +415,7 @@ zip2 ss ts = vapp (vapp (vec _,_) ss) ts
 %format applicativeVec = "\F{applicativeVec}"
 %format endoFunctorVec = "\F{endoFunctorVec}"
 %format applicativeFun = "\F{applicativeFun}"
-%format itsApplicative = "\F{itsApplicative}"
+%format monadApplicative = "\F{monadApplicative}"
 %format return = "\F{return}"
 %format >>= = "\F{>\!\!>\!\!=}"
 %format _>>=_ = "\_\!" >>= "\!\_"
@@ -475,8 +485,8 @@ record Monad (F : Set -> Set) : Set1 where
   field
     return  : forall {X} -> X -> F X
     _>>=_   : forall {S T} -> F S -> (S -> F T) -> F T
-  itsApplicative : Applicative F
-  itsApplicative = record
+  monadApplicative : Applicative F
+  monadApplicative = record
     {  pure   = return
     ;  _<*>_  = \ ff fs -> ff >>= \ f -> fs >>= \ s -> return (f s) }
 open Monad {{...}}
@@ -489,7 +499,7 @@ Construct a |Monad| satisfying the |Monad| laws
 monadVec : {n : Nat} -> Monad \ X -> Vec X n
 monadVec = ?
 \end{spec}
-such that |itsApplicative| agrees extensionally with |applicativeVec|.
+such that |monadApplicative| agrees extensionally with |applicativeVec|.
 %if False
 \begin{code}
 monadVec : {n : Nat} -> Monad \ X -> Vec X n
@@ -583,5 +593,157 @@ record Normal : Set1 where
   <!_!>N : Set -> Set
   <!_!>N X = Sg Shape \ s -> Vec X (size s)
 open Normal
+infixr 0 _/_
 \end{code}
 
+Wait! What? The type |Sg (S : Set) (T : S -> Set)| has elements
+|(s : S) , (t : T s)|, so that the type of the second component depends
+on the value of the first. From |p : Sg S T|, we may project
+|fst p : S| and |snd p : T (fst p)|, but I also define |^| to be a low precedence
+currying operator, so that |^ \ s t -> ...| gives access to the components.
+
+On the one hand, we may take |S * T = Sg S \ _ -> T|
+and generalize the binary product to its dependent version. On the
+other hand, we can see |Sg S T| as generalising the binary sum to an |S|-ary
+sum, which is why the type is called |Sg| in the first place.
+
+We can recover the binary sum (coproduct) by defining a two element type:
+%format Two = "\D{Two}"
+%format tt = "\C{t\!t}"
+%format ff = "\C{f\!f}"
+\begin{code}
+data Two : Set where tt ff : Two
+\end{code}
+
+It is useful to define a conditional operator, indulging my penchant for giving
+infix operators three arguments,
+%format <?> = "\F{\left<?\right>}"
+%format _<?>_ = "\_\!" <?> "\!\_"
+\begin{code}
+_<?>_ : forall {l}{P : Two -> Set l} -> P tt -> P ff -> (b : Two) -> P b
+(t <?> f) tt = t
+(t <?> f) ff = f
+\end{code}
+for we may then define:
+\begin{code}
+_+_ : Set -> Set -> Set
+S + T = Sg Two (S <?> T)
+\end{code}
+Note that |<?>| has been defined to work at all levels of the predicative
+hierarchy, so that we can use it to choose between |Set|s, as well as between
+ordinary values. |Sg| thus models both choice and pairing in data structures.
+
+I don't know about you, but I find I do a lot more arithmetic with types than I
+do with numbers, which is why I have used |*| and |+| for |Set|s. Developing a
+library of normal functors will, however, necessitate arithmetic on sizes as
+well as shapes.
+
+%format +Nat = + "_" Nat
+%format *Nat = * "_" Nat
+\begin{exe}[unary arithmetic]
+Implement addition and multiplication for numbers.
+\begin{spec}
+_+N_ : Nat -> Nat -> Nat
+x +N y = ?
+
+_*N_ : Nat -> Nat -> Nat
+x *N y = ?
+\end{spec}
+%if False
+\begin{code}
+_+Nat_ : Nat -> Nat -> Nat
+zero +Nat y = y
+suc x +Nat y = suc (x +Nat y)
+
+_*Nat_ : Nat -> Nat -> Nat
+zero *Nat y = zero
+suc x *Nat y = y +Nat (x *Nat y)
+\end{code}
+%endif
+\end{exe}
+
+%format +N = + "_\F{N}"
+%format *N = * "_\F{N}"
+Let us construct sums and products of normal functors.
+\begin{code}
+_+N_ : Normal -> Normal -> Normal
+(SSh / Ssz) +N (TSh / Tsz) = (SSh + TSh) / ^ Ssz <?> Tsz
+
+_*N_ : Normal -> Normal -> Normal
+(SSh / Ssz) *N (TSh / Tsz) = (SSh * TSh) / ^ \ s t -> Ssz s +Nat Tsz t
+\end{code}
+
+Of course, it is one thing to construct these binary operators on |Normal|,
+but quite another to show they are worthy of their names.
+
+%format nInj = "\F{nInj}"
+\begin{code}
+nInj : forall {X}(F G : Normal) -> <! F !>N X + <! G !>N X -> <! F +N G !>N X
+nInj F G (tt , FSh , xs) = (tt , FSh) , xs
+nInj F G (ff , GSh , xs) = (ff , GSh) , xs
+\end{code}
+
+Now, we could implement the other direction of the isomorphism, but an
+alternative is to define the \emph{inverse image}.
+
+%format ^-1 = "{}^{\F{ -1}}"
+%format from = "\C{from}"
+\begin{code}
+data _^-1_ {S T : Set}(f : S -> T) : T -> Set where
+  from : (s : S) -> f ^-1 f s
+\end{code}
+
+%format nInj = "\F{nInj}"
+Let us now show that |nInj| is surjective.
+\begin{code}
+nCase : forall {X} F G (s : <! F +N G !>N X) -> nInj F G ^-1 s
+nCase F G ((tt , FSh) , xs) = from (tt , FSh , xs)
+nCase F G ((ff , GSh) , xs) = from (ff , GSh , xs)
+\end{code}
+That is, we have written more or less the other direction of the iso,
+but we have acquired some of the correctness proof for the cost of
+asking. We shall check that |nInj| is injective shortly, once we have
+suitable equipment to say so.
+
+The inverse of `nInj` can be computed by |nCase| thus:
+%format nOut = "\F{nOut}"
+\begin{code}
+nOut : forall {X}(F G : Normal) -> <! F +N G !>N X -> <! F !>N X + <! G !>N X
+nOut F G xs' with nCase F G xs'
+nOut F G .(nInj F G xs) | from xs = xs
+\end{code}
+The |with| notation allows us to compute smoe useful information and add
+it to the collection of things available for inspection in pattern matching.
+By matching the result of |nCase F G xs'| as |from xs|, we discover that
+\emph{ipso facto}, |xs'| is |nInj xs|. It is in the nature of dependent
+types that inspecting one piece of data can refine our knowledge of the whole
+programming problem, hence McKinna and I designed |with| as a syntax for
+bringing new information to the problem. The usual Burstallian
+`case expression' focuses on one scrutinee and shows us its refinements,
+but hides from us the refinement of the rest of the problem: in simply
+typed programming there is no such refinement, but here there is. Agda
+prefixes with a dot those parts of patterns, not necessarily linear
+constructor forms, which need not be checked dynamically because the
+corresponding value must be as indicated in any well typed usage.
+
+\begin{exe}[normal pairing]
+Implement the constructor for normal functor pairs. What operation on
+vectors will you need in order to define it?
+%format nPair = "\F{nPair}"
+\begin{spec}
+nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
+nPair F G fgx = ?
+\end{spec}
+Show that your constructor is surjective.
+%if False
+\begin{code}
+_++_ : forall {m n X} -> Vec X m -> Vec X n -> Vec X (m +Nat n)
+<> ++ ys = ys
+(x , xs) ++ ys = x , (xs ++ ys)
+
+nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
+nPair F G ((FSh , xs) , (GSh , ys)) = (FSh , GSh) , xs ++ ys
+\end{code}
+%% too lazy for surj, the now
+%endif
+\end{exe}

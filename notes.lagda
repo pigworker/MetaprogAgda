@@ -55,6 +55,8 @@
 \newcommand{\V}[1]{\purple{\mathit{#1}}}
 \newcommand{\T}[1]{\raisebox{0.02in}{\tiny\green{\textsc{#1}}}}
 
+\newcommand{\us}[1]{\_\!#1\!\_}
+
 %include lhs2TeX.fmt
 %include lhs2TeX.sty
 %include polycode.fmt
