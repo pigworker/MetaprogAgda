@@ -401,7 +401,8 @@ zip2 ss ts = vapp (vapp (vec _,_) ss) ts
 %format pure = "\F{pure}"
 %format <*> = "\F{\circledast}"
 %format _<*>_ = "\_\!" <*> "\!\_"
-%format itsEndoFunctor = "\F{itsEndoFunctor}"
+%format applicativeEndoFunctor = "\F{applicativeEndoFunctor}"
+%format traversableEndoFunctor = "\F{traversableEndoFunctor}"
 %format applicativeVec = "\F{applicativeVec}"
 %format endoFunctorVec = "\F{endoFunctorVec}"
 %format applicativeFun = "\F{applicativeFun}"
@@ -441,8 +442,8 @@ record Applicative (F : Set -> Set) : Set1 where
   field
     pure    : forall {X} -> X -> F X
     _<*>_   : forall {S T} -> F (S -> T) -> F S -> F T
-  itsEndoFunctor : EndoFunctor F
-  itsEndoFunctor = record { map = _<*>_ o pure }
+  applicativeEndoFunctor : EndoFunctor F
+  applicativeEndoFunctor = record { map = _<*>_ o pure }
 open Applicative {{...}}
 \end{code}
 The |Applicative F| structure decomposes |F|'s |map| as the ability to make
@@ -454,7 +455,7 @@ the context with suitable candidates for |Vec|:
 applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
 applicativeVec  = record { pure = vec; _<*>_ = vapp }
 endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
-endoFunctorVec  = itsEndoFunctor
+endoFunctorVec  = applicativeEndoFunctor
 \end{code}
 Indeed, the definition of |endoFunctorVec| already makes use of way
 |itsEndoFunctor| searches the context and finds |applicativeVec|.
@@ -509,6 +510,27 @@ monadVec = record
 \begin{exe}[|Applicative| identity and composition]
 Show by construction that the identity endofunctor is |Applicative|, and that
 the composition of |Applicative|s is |Applicative|.
+%format applicativeId = "\F{applicativeId}"
+%format applicativeComp = "\F{applicativeComp}"
+\begin{spec}
+applicativeId : Applicative id
+applicativeId = ?
+
+applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
+applicativeComp aF aG = ?
+\end{spec}
+%if False
+\begin{code}
+applicativeId : Applicative id
+applicativeId = record { pure = id; _<*>_ = id }
+
+applicativeComp : forall {F G} -> Applicative F -> Applicative G -> Applicative (F o G)
+applicativeComp aF aG = record
+  {  pure   = \ x    -> pure {{aF}} (pure x)
+  ;  _<*>_  = \ f s  -> pure {{aF}} _<*>_ <*> f <*> s
+  }
+\end{code}
+%endif
 \end{exe}
 
 \begin{exe}[|Applicative| product]
@@ -524,17 +546,21 @@ record Traversable (F : Set -> Set) : Set1 where
   field
     traverse :  forall {G S T}{{_ : Applicative G}} ->
                 (S -> G T) -> F S -> G (F T)
+  traversableEndoFunctor : EndoFunctor F
+  traversableEndoFunctor = record { map = traverse }
 open Traversable {{...}}
 \end{code}
 
 %format vtr = "\F{vtr}"
+\nudge{The explicit |aG| became needed after I introduced the
+|applicativeId| exercise, making resolution ambiguous.}
 \begin{code}
 traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
 traversableVec = record { traverse = vtr } where
   vtr :  forall {n G S T}{{_ : Applicative G}} ->
          (S -> G T) -> Vec S n -> G (Vec T n)
-  vtr f <>        = pure <>
-  vtr f (s , ss)  = pure _,_ <*> f s <*> vtr f ss
+  vtr {{aG}} f <>        = pure {{aG}} <>
+  vtr {{aG}} f (s , ss)  = pure {{aG}} _,_ <*> f s <*> vtr f ss
 \end{code}
 
 %format transpose = "\F{transpose}"
@@ -583,5 +609,18 @@ record Normal : Set1 where
   <!_!>N : Set -> Set
   <!_!>N X = Sg Shape \ s -> Vec X (size s)
 open Normal
+\end{code}
+
+%format VecN = "\F{VecN}"
+%format ListN = "\F{ListN}"
+
+Vectors are the normal functors with a unique shape. Lists are the normal functors
+whose shape is their size.
+\begin{code}
+VecN : Nat -> Normal
+VecN n = One / pure n
+
+ListN : Normal
+ListN = Nat / id
 \end{code}
 
