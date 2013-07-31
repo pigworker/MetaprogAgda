@@ -542,12 +542,13 @@ applicativeComp aF aG = record
 %endif
 \end{exe}
 
-\begin{exe}[|Monoid| makes |Applicative|]
-Let us give the signature for a monoid thus:
 %format Monoid = "\D{Monoid}"
 %format neut = "\F{\varepsilon}"
 %format & = "\bullet"
 %format _&_ = "\us{" & "}"
+%format monoidApplicative = "\F{monoidApplicative}"
+\begin{exe}[|Monoid| makes |Applicative|]
+Let us give the signature for a monoid thus:
 \begin{spec}
 record Monoid (X : Set) : Set where
   infixr 4 _&_
@@ -559,6 +560,7 @@ record Monoid (X : Set) : Set where
 open Monoid {{...}} -- it's not obvious that we'll avoid ambiguity
 \end{spec}
 Complete the |Applicative| so that it behaves like the |Monoid|.
+%if False
 \begin{code}
 record Monoid (X : Set) : Set where
   infixr 4 _&_
@@ -569,6 +571,7 @@ record Monoid (X : Set) : Set where
   monoidApplicative = record { pure = \ x -> neut; _<*>_ = _&_ }
 open Monoid {{...}} -- it's not obvious that we'll avoid ambiguity
 \end{code}
+%endif
 \end{exe}
 
 \begin{exe}[|Applicative| product]
@@ -624,9 +627,15 @@ in how to override implicit and instance arguments.}
 \begin{code}
 crush :  forall {F X Y}{{TF : Traversable F}}{{M : Monoid Y}} ->
          (X -> Y) -> F X -> Y
-crush {{M = M}} = traverse {T = One}{{AG = monoidApplicative {{M}}}}
+crush {{M = M}} =
+  traverse {T = One}{{AG = monoidApplicative {{M}}}}
 \end{code}
-
+Amusingly, we must tell Agda which |T| is intended when viewing |X -> Y| as
+|X -> (\ _ -> Y) T|. In a Hindley-Milner
+language, such uninferred things are unimportant because they are in any case
+parametric. In the dependently typed setting, we cannot rely on quantification
+being parametric (although in the absence of typecase, quantification over
+types cannot help so being).
 
 \begin{exe}[|Traversable| functors]
 Show that |Traversable| is closed under identity and composition.
@@ -870,3 +879,19 @@ _oN_ : Normal -> Normal -> Normal
 F oN (ShG / szG) = <! F !>N ShG / crush {{normalTraversable F}} szG
 \end{code}
 
+The fact that we needed only the |Traversable| interface to |F| is a bit of a
+clue to the true nature of |Traversable| functors. We may give a generic size
+operation
+%format sizeT = "\F{sizeT}"
+\begin{code}
+sizeT : forall {X F}{{TF : Traversable F}} -> F X -> Nat
+sizeT = crush (pure 1)
+\end{code}
+and with it, we may extract a |Normal| functor from any |Traversable|.
+%format normalT = "\F{normalT}"
+\begin{code}
+normalT : forall F {{TF : Traversable F}} -> Normal
+normalT F = F One / sizeT
+\end{code}
+One way to specify |Traversable F| is just to say that
+|F| is naturally isomorphic to |<! normalT F !>N|.
