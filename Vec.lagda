@@ -907,12 +907,13 @@ There's a huge design space, not least because we often have \emph{two}
 notions of equality to work with, so we need to design both and their
 interaction.
 
-%format jeq = "\equiv" On the one hand, we have \emph{judgmental}
-equality. Suppose you have |s : S| and you want to put |s| where a
-value of type |T| is expected. Can you? You can if |S jeq
-T|. Different systems specify |jeq| differently. Before dependent
-types arrived, syntactic equality (perhaps up to $\alpha$-conversion)
-was often enough.
+%format jeq = "\equiv"
+
+On the one hand, we have \emph{judgmental} equality. Suppose you have
+|s : S| and you want to put |s| where a value of type |T| is
+expected. Can you? You can if |S jeq T|. Different systems specify
+|jeq| differently. Before dependent types arrived, syntactic equality
+(perhaps up to $\alpha$-conversion) was often enough.
 
 In dependently typed languages, it is quite convenient if |Vec X (2 +
 2)| is the same type as |Vec X 4|, so we often consider types up to
@@ -923,8 +924,9 @@ strongly normalizing, then |jeq| is decidable, by
 normalize-and-compare in theory and by more carefully tuned heuristics
 in practice.
 
-%format !!!- "\vdash"
+%format !!!- = "\vdash"
 %format == = "\D{\simeq}"
+%format refl = "\C{refl}"
 
 Agda takes things a little further by supporting $\eta$-conversion at
 some `negative' types---specifically, function types and record
@@ -941,7 +943,7 @@ from the computer by making judgmental equality admit more equations
 which we consider morally true, but it is clear that any
 \emph{decidable} judgmental equality will always
 disappont---extensional equality of functions is undecidable, for
-example. Corresopndingly, the equational theory of \emph{open} terms
+example. Correspondingly, the equational theory of \emph{open} terms
 (conceived as functions from valuations of their variables) will always
 be to some extent beyond the ken of the computer.
 
@@ -987,10 +989,16 @@ For now, let us acknowledge the problem and make do.
 
 We may register equality with Agda, via the following pragmas,
 \nudge{...but for this pragma, we need |_==_ {l}{X} s t : Set l|}
+%if False
 \begin{code}
 {-# BUILTIN EQUALITY _==_ #-}
 {-# BUILTIN REFL refl #-}
 \end{code}
+%endif False
+\begin{verbatim}
+{-# BUILTIN EQUALITY _==_ #-}
+{-# BUILTIN REFL refl #-}
+\end{verbatim}
 and thus gain access to Agda's support for equational reasoning.
 
 By way of a first example, let us estabish what Alan Bundy calls `the E. Coli of
@@ -1003,9 +1011,9 @@ assoc+ (suc x)  y z rewrite assoc+ x y z  = refl
 \end{code}
 The usual inductive proof becomes a structurally recursive function,
 pattern matching on the argument in which |+Nat| is strict, so that
-computation unfolds. Sadly, an Agda program, seen as a proof document
-does not show you the subgoal structure.\nudge{differently from the
-way in which a Coq script also does not.} However, we can see that
+computation unfolds. Sadly, an Agda\nudge{differently from the
+way in which a Coq script also does not} program, seen as a proof document
+does not show you the subgoal structure. However, we can see that
 the base case holds computationally and the step case becomes trivial
 once we have rewritten the goal by the inductive hypothesis (being the
 type of the structurally recursive call).
@@ -1042,12 +1050,12 @@ we see concrete goals (up to some tidying):
 
 This is a fool's errand. The pattern matching definition of |vapp|
 will not allow these equations on functions to hold at the level of
-|jeq|. We could make them a little more concrete by doing induction
-on |n|, but we will still not force enough computation. Our |==| cannot
-be extensional for functions because it has canonical proofs for nothing
-more than |jeq|, and |jeq| cannot incorporate extensionality and remain
-decidable.\nudge{Some see this as reason enough to abandon decidability of
-|jeq|, thence of typechecking.}
+|jeq|. We could make them a little more concrete by doing induction on
+|n|, but we will still not force enough computation. Our |==| cannot
+be extensional\nudge{Some see this as reason enough to abandon
+decidability of |jeq|, thence of typechecking.} for functions because
+it has canonical proofs for nothing more than |jeq|, and |jeq| cannot
+incorporate extensionality and remain decidable.
 
 We can define \emph{pointwise} equality,
 %format =1= = "\F{\doteq}"
@@ -1072,6 +1080,8 @@ record EndoFunctorOKP F {{FF : EndoFunctor F}} : Set1 where
 \end{code}
 and give the proof:
 %format vecEndoFunctorOKP = "\F{vecEndoFunctorOKP}"
+%format mapId = "\F{mapId}"
+%format mapCo = "\F{mapCo}"
 \begin{code}
 vecEndoFunctorOKP : forall {n} -> EndoFunctorOKP \ X -> Vec X n
 vecEndoFunctorOKP = record
