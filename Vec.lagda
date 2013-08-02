@@ -689,7 +689,7 @@ Before we go any further, let us establish that the type |Sg (S : Set)
 (T : S -> Set)| has elements |(s : S) , (t : T s)|, so that the type
 of the second component depends on the value of the first. From |p :
 Sg S T|, we may project |fst p : S| and |snd p : T (fst p)|, but I
-also define |^| to be a low precedence currying operator, so that |^ \
+also define |^| to be a low precedence uncurrying operator, so that |^ \
 s t -> ...| gives access to the components.
 
 On the one hand, we may take |S * T = Sg S \ _ -> T|
@@ -821,10 +821,15 @@ constructor forms, which need not be checked dynamically because the
 corresponding value must be as indicated in any well typed usage.
 
 \begin{exe}[normal pairing]
-Implement the constructor for normal functor pairs. What operation on
-vectors will you need in order to define it?
+Implement the constructor for normal functor pairs. It may help to
+define vector concatenation.
 %format nPair = "\F{nPair}"
+%format ++ = "\F{+\!\!+}"
+%format _++_ = "\us{" ++ "}"
 \begin{spec}
+_++_ : forall {m n X} -> Vec X m -> Vec X n -> Vec X (m +Nat n)
+xs ++ ys = ?
+
 nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
 nPair F G fxgx = ?
 \end{spec}
@@ -839,6 +844,25 @@ nPair : forall {X}(F G : Normal) -> <! F !>N X * <! G !>N X -> <! F *N G !>N X
 nPair F G ((ShF , xs) , (ShG , ys)) = (ShF , ShG) , xs ++ ys
 \end{code}
 %% too lazy for surj, the now
+%endif
+\end{exe}
+
+\begin{exe}[|ListN| monoid]
+While you are in this general area, construct (from readily available components)
+the usual monoid structure for our normal presentation of lists.
+\begin{spec}
+listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
+listNMonoid = ?
+\end{spec}
+%format listNMonoid = "\F{listNMonoid}"
+%if False
+\begin{code}
+listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
+listNMonoid = record
+  {  neut  = 0 , <>
+  ;  _&_   = ^ \ xn xs -> ^ \ yn ys -> xn +Nat yn , xs ++ ys 
+  }
+\end{code}
 %endif
 \end{exe}
 
@@ -880,22 +904,55 @@ F oN (ShG / szG) = <! F !>N ShG / crush {{normalTraversable F}} szG
 \end{code}
 
 The fact that we needed only the |Traversable| interface to |F| is a bit of a
-clue to the true nature of |Traversable| functors. We may give a generic size
-operation
+clue to a connection between |Traversable| and |Normal| functors.
+|Traversable| structures have a notion of size induced by the |Monoid|
+structure for |Nat|:
+%format listNMonoid = "\F{listNMonoid}"
 %format sizeT = "\F{sizeT}"
 \begin{code}
-sizeT : forall {X F}{{TF : Traversable F}} -> F X -> Nat
-sizeT = crush (pure 1)
+sizeT : forall {F}{{TF : Traversable F}}{X} -> F X -> Nat
+sizeT = crush (\ _ -> 1)
 \end{code}
-and with it, we may extract a |Normal| functor from any |Traversable|.
+
+Hence, every |Traversable| functor has a |Normal| counterpart
 %format normalT = "\F{normalT}"
 \begin{code}
 normalT : forall F {{TF : Traversable F}} -> Normal
 normalT F = F One / sizeT
 \end{code}
-One way to specify |Traversable F| is just to say that
-|F| is naturally isomorphic to |<! normalT F !>N|.\nudge{Check this.} We shall
-investigate further, as soon as we have the means.
+where the shape is an |F| with placeholder elements and the size is the number
+of such places.
+
+Can we put a |Traversable| structure into its |Normal| representation?
+We can certainly extract the shape:
+%format shapeT = "\F{shapeT}"
+\begin{code}
+shapeT : forall {F}{{TF : Traversable F}}{X} -> F X -> F One
+shapeT = traverse (\ _ -> <>)
+\end{code}
+We can also define the list of elements, which should have the same length as
+the size
+%format contentsT = "\F{contentsT}"
+\begin{code}
+one : forall {X} -> X -> <! ListN !>N X
+one x = 1 , (x , <>)
+
+contentsT : forall {F}{{TF : Traversable F}}{X} -> F X -> <! ListN !>N X
+contentsT = crush one
+\end{code}
+and then try
+%format toNormal = "\F{toNormal}"
+\begin{spec}
+toNormal : forall {F}{{TF : Traversable F}}{X} -> F X -> <! normalT F !>N X
+toNormal fx = BAD (shapeT fx , snd (contentsT fx))
+\end{spec}
+but it fails to typecheck because the size of the shape of |fx|
+is not obviously the length of the contents of |fx|.
+The trouble is that |Traversable F| is
+underspecified. In due course, we shall discover that it means 
+just that
+|F| is naturally isomorphic to |<! normalT F !>N|.\nudge{Check this.}
+To see this, however, we shall need the capacity to reason equationally.
 
 
 \section{Proving Equations}
@@ -1001,15 +1058,38 @@ We may register equality with Agda, via the following pragmas,
 \end{verbatim}
 and thus gain access to Agda's support for equational reasoning.
 
-By way of a first example, let us estabish what Alan Bundy calls `the E. Coli of
-inductive theorem proving', namely, the associativity of addition.
+Now that we have some sort of equality, we can specify laws for our
+structures, e.g., for |Monoid|.
+\begin{code}
+record MonoidOK X {{M : Monoid X}} : Set where
+  field
+    absorbL  : (x : X) ->      neut & x == x
+    absorbR  : (x : X) ->      x & neut == x
+    assoc    : (x y z : X) ->  (x & y) & z == x & (y & z)
+\end{code}
+
+Let's check that |+Nat| really gives a monoid.
 %format assoc+ = "\F{assoc+}"
 \begin{code}
-assoc+ : forall x y z -> (x +Nat y) +Nat z  == x +Nat (y +Nat z)
-assoc+ zero     y z                       = refl
-assoc+ (suc x)  y z rewrite assoc+ x y z  = refl
+natMonoidOK : MonoidOK Nat
+natMonoidOK = record
+  {  absorbL  = \ _ -> refl
+  ;  absorbR  = _+zero
+  ;  assoc    = assoc+
+  }  where    -- see below
 \end{code}
-The usual inductive proof becomes a structurally recursive function,
+The |absorbL| law follows by computation, but the other two require inductive
+proof.
+\begin{code}
+  _+zero : forall x -> x +Nat zero == x
+  zero   +zero                  = refl
+  suc n  +zero rewrite n +zero  = refl
+
+  assoc+ : forall x y z -> (x +Nat y) +Nat z  == x +Nat (y +Nat z)
+  assoc+ zero     y z                       = refl
+  assoc+ (suc x)  y z rewrite assoc+ x y z  = refl
+\end{code}
+The usual inductive proofs become structurally recursive functions,
 pattern matching on the argument in which |+Nat| is strict, so that
 computation unfolds. Sadly, an Agda\nudge{differently from the
 way in which a Coq script also does not} program, seen as a proof document
@@ -1018,8 +1098,70 @@ the base case holds computationally and the step case becomes trivial
 once we have rewritten the goal by the inductive hypothesis (being the
 type of the structurally recursive call).
 
-Now that we have a notion of equality, we can start equipping our
-earlier code with \emph{laws}. We might hope to write:
+\begin{exe}[|ListN| monoid]
+This is a nasty little exercise. By all means warm up by proving that
+|List X| is a monoid with respect to concatenation, but I want you to
+have a crack at
+\begin{spec}
+listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
+listNMonoidOK {X} = ?
+\end{spec}
+Hint 1: use \emph{curried} helper functions to ensure structural recursion.
+The inductive step cases are tricky because the
+hypotheses equate number-vector pairs, but the components of those pairs
+are scattered in the goal, so |rewrite| will not help. Hint 2: use
+|subst| with a predicate of form |^ \ n xs -> ...|, which will allow you
+to abstract over separated places with |n| and |xs|.
+%if False
+\begin{code}
+listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
+listNMonoidOK {X} = record
+  {  absorbL  = \ _ -> refl
+  ;  absorbR  = ^ aR
+  ;  assoc    = ^ aa
+  }  where
+  aR : forall n (xs : Vec X n) ->
+       (n , xs) & neut {{listNMonoid}} == (n , xs)
+  aR .zero    <>        = refl
+  aR (suc n)  (x , xs)  =
+    subst (aR n xs) (^ \ m ys -> suc (n +Nat 0) , x , xs ++ <> == suc m , x , ys)
+      refl
+  aa : forall n (xs : Vec X n)(ys zs : <! ListN !>N X) ->
+       ((n , xs) & ys) & zs == (n , xs) & (ys & zs)
+  aa .zero    <>        _         _         = refl
+  aa (suc n)  (x , xs)  (i , ys)  (j , zs)  =
+     subst (aa n xs (i , ys) (j , zs))
+       (^ \ m ws ->  _==_ {_}{<! ListN !>N X}
+         (suc ((n +Nat i) +Nat j) , (x , (xs ++ ys) ++ zs)) (suc m , (x , ws)))
+       refl
+\end{code}
+%endif
+\end{exe}
+
+\begin{exe}[a not inconsiderable problem]
+Find out what goes wrong when you try to state associativity of vector |++|,
+let alone prove it. What does it tell you about our |==| setup?
+\end{exe}
+
+A \emph{monoid homomorphism} is a map between their carrier sets which
+respects the operations.
+\begin{code}
+record MonoidHom {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}(f : X -> Y) : Set where
+  field
+    respNeut  :                 f neut == neut
+    resp&     : forall x x' ->  f (x & x') == f x & f x'
+\end{code}
+For example, taking the length of a list is, in the |Normal| representation,
+trivially a homomorphism.
+\begin{code}
+fstHom : {X : Set} -> MonoidHom {<! ListN !>N X}{Nat} fst
+fstHom = record { respNeut = refl; resp& = \ _ _ -> refl }
+\end{code}
+
+
+Moving along to functorial structures, let us explore laws about
+the transformation of \emph{functions}. Equations at higher order mean
+trouble ahead!
 
 %format EndoFunctorOK = "\D{EndoFunctorOK}"
 %format endoFunctorId = "\F{endoFunctorId}"
@@ -1068,7 +1210,7 @@ infix 1 _=1=_
 \end{code}
 which is reflexive but not substitutive.
 
-Now we can at least require
+Now we can at least require:
 %format EndoFunctorOKP = "\D{EndoFunctorOKP}"
 \begin{code}
 record EndoFunctorOKP F {{FF : EndoFunctor F}} : Set1 where
@@ -1078,10 +1220,16 @@ record EndoFunctorOKP F {{FF : EndoFunctor F}} : Set1 where
     endoFunctorCo  : forall {R S T}(f : S -> T)(g : R -> S) ->
       map {{FF}} f o map g =1= map (f o g)
 \end{code}
-and give the proof:
+
 %format vecEndoFunctorOKP = "\F{vecEndoFunctorOKP}"
 %format mapId = "\F{mapId}"
 %format mapCo = "\F{mapCo}"
+\begin{exe}[|Vec| functor laws]
+\begin{spec}
+vecEndoFunctorOKP : forall {n} -> EndoFunctorOKP \ X -> Vec X n
+vecEndoFunctorOKP = ?
+\end{spec}
+%if False
 \begin{code}
 vecEndoFunctorOKP : forall {n} -> EndoFunctorOKP \ X -> Vec X n
 vecEndoFunctorOKP = record
@@ -1091,9 +1239,177 @@ vecEndoFunctorOKP = record
   mapId : forall {n X}(xs : Vec X n) -> vapp (vec id) xs == xs
   mapId <>                          = refl
   mapId (x , xs)  rewrite mapId xs  = refl
-  mapCo : forall {n R S T} (f : S → T) (g : R → S) (xs : Vec R n) →
-          vapp (vec f) (vapp (vec g) xs) == vapp (vec (f o g)) xs
+  mapCo :  forall {n R S T} (f : S -> T) (g : R -> S) (xs : Vec R n) →
+           vapp (vec f) (vapp (vec g) xs) == vapp (vec (f o g)) xs
   mapCo f g <>                              = refl
   mapCo f g (x , xs)  rewrite mapCo f g xs  = refl
 \end{code}
+%endif
+\end{exe}
 
+
+\section{Laws for |Applicative| and |Traversable|}
+
+Developing the laws for |Applicative| and |Traversable| requires more
+substantial chains of equational reasoning. Here are some operators
+which serve that purpose, inspired by work from Lennart Augustsson and
+Shin-Cheng Mu.
+
+\begin{code}
+_=!!_>>_ : forall {l}{X : Set l}(x : X){y z} -> x == y -> y == z -> x == z
+_ =!! refl >> q = q
+
+_<<_!!=_ : forall {l}{X : Set l}(x : X){y z} -> y == x -> y == z -> x == z
+_ << refl !!= q = q
+
+_<QED> : forall {l}{X : Set l}(x : X) -> x == x
+x <QED> = refl
+
+infixr 1 _=!!_>>_ _<<_!!=_ _<QED>
+\end{code}
+
+These three build right-nested chains of equations. Each requires an explicit
+statement of where to start. The first two step along an equation used
+left-to-right or right-to-left, respectively, then continue the chain. Then,
+|x <QED>| marks the end of the chain.
+
+Meanwhile, we may need to rewrite in a context whilst building these proofs.
+In the expression syntax, we have nothing like |rewrite|.
+\begin{code}
+cong : forall {k l}{X : Set k}{Y : Set l}(f : X -> Y){x y} -> x == y -> f x == f y
+cong f refl = refl
+\end{code}
+
+Thus armed, let us specify what makes an |Applicative| acceptable, then
+show that such a thing is certainly a |Functor|.
+\nudge{I had to $\eta$-expand |o| in lieu of subtyping.}
+\begin{code}
+record ApplicativeOKP F {{AF : Applicative F}} : Set1 where
+  field
+    lawId :   forall {X}(x : F X) ->
+      pure {{AF}} id <*> x == x
+    lawCo :   forall {R S T}(f : F (S -> T))(g : F (R -> S))(r : F R) ->
+      pure {{AF}} (\ f g -> f o g) <*> f <*> g <*> r == f <*> (g <*> r)
+    lawHom :  forall {S T}(f : S -> T)(s : S) ->
+      pure {{AF}} f <*> pure s == pure (f s)
+    lawCom :  forall {S T}(f : F (S -> T))(s : S) ->
+      f <*> pure s == pure {{AF}} (\ f -> f s) <*> f
+  applicativeEndoFunctorOKP : EndoFunctorOKP F {{applicativeEndoFunctor}}
+  applicativeEndoFunctorOKP = record
+    {  endoFunctorId = lawId
+    ;  endoFunctorCo = \ f g r ->
+         pure {{AF}} f <*> (pure {{AF}} g <*> r)
+           << lawCo (pure f) (pure g) r !!=
+         pure {{AF}} (\ f g -> f o g) <*> pure f <*> pure g <*> r
+           =!! cong (\ x -> x <*> pure g <*> r) (lawHom (\ f g -> f o g) f) >>
+         pure {{AF}} (_o_ f) <*> pure g <*> r 
+           =!! cong (\ x -> x <*> r) (lawHom (_o_ f) g) >>
+         pure {{AF}} (f o g) <*> r
+           <QED>
+    }
+\end{code}
+
+\begin{exe}[|ApplicativeOKP| for |Vec|]
+%format vecApplicativeOKP = "\F{vecApplicativeOKP}"
+Check that vectors are properly applicative. You can get away with
+|rewrite| for these proofs, but you might like to try the new tools.
+\begin{spec}
+vecApplicativeOKP : {n : Nat} -> ApplicativeOKP \ X -> Vec X n
+vecApplicativeOKP = ?
+\end{spec}
+%if False
+\begin{code}
+vecApplicativeOKP : {n : Nat} -> ApplicativeOKP \ X -> Vec X n
+vecApplicativeOKP = record
+  {  lawId   = appId
+  ;  lawCo   = appCo
+  ;  lawHom  = appHom
+  ;  lawCom  = appCom
+  }  where
+  appId : forall {n X}(xs : Vec X n) -> vapp (vec id) xs == xs
+  appId <>                          = refl
+  appId (x , xs)  rewrite appId xs  = refl
+  appCo :  forall {n R S T}
+           (f : Vec (S -> T) n) (g : Vec (R -> S) n)(xs : Vec R n) ->
+           vapp (vapp (vapp (vec (\ f g -> f o g)) f) g) xs == vapp f (vapp g xs)
+  appCo <>        <>        <>                                = refl
+  appCo (f , fs)  (g , gs)  (x , xs)  rewrite appCo fs gs xs  = refl
+  appHom :  forall {n S T} (f : S -> T) (s : S) →
+            vapp {n} (vec f) (vec s) == vec (f s)
+  appHom {zero}   f s                         = refl
+  appHom {suc n}  f s rewrite appHom {n} f s  = refl
+  appCom :  forall {n S T} (f : Vec (S -> T) n) (s : S) ->
+            vapp f (vec s) == vapp (vec (\ f → f s)) f
+  appCom <> s = refl
+  appCom (f , fs) s rewrite appCom fs s = refl
+\end{code}
+%endif
+\end{exe}
+
+Given that |traverse| is parametric in an |Applicative|, we should expect to
+observe the corresponding naturality. We thus need a notion of
+\emph{applicative homomorphism}, being a natural transformation which respects
+|pure| and |<*>|. That is,
+\begin{code}
+_-:>_ : forall (F G : Set -> Set) -> Set1
+F -:> G = forall {X} -> F X -> G X
+
+record AppHom  {F}{{AF : Applicative F}}{G}{{AG : Applicative G}}
+               (k : F -:> G) : Set1 where
+  field
+    respPure  : forall {X}(x : X) -> k (pure x) == pure x
+    respApp   : forall {S T}(f : F (S -> T))(s : F S) -> k (f <*> s) == k f <*> k s
+\end{code}
+
+We may readily check that monoid homomorphisms lift to applicative homomorphisms.
+\begin{code}
+monoidApplicativeHom :
+  forall {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}(f : X -> Y){{hf : MonoidHom f}} ->
+  AppHom {{monoidApplicative {{MX}}}} {{monoidApplicative {{MY}}}} f
+monoidApplicativeHom f {{hf}} = record
+  {  respPure  = \ x -> MonoidHom.respNeut hf
+  ;  respApp   = MonoidHom.resp& hf
+  }
+\end{code}
+
+Laws for |Traversable| functors are given thus:
+\begin{code}
+record TraversableOKP F {{TF : Traversable F}} : Set1 where
+  field
+    lawId   :  forall  {X}(xs : F X) -> traverse id xs == xs
+    lawCo   :  forall  {G}{{AG : Applicative G}}{H}{{AH : Applicative H}}
+                       {R S T}(g : S -> G T)(h : R -> H S)(rs : F R) ->
+               let  EH : EndoFunctor H ; EH = applicativeEndoFunctor
+               in   map{H} (traverse g) (traverse h rs)
+                      ==
+                    traverse{{TF}}{{applicativeComp AH AG}} (map{H} g o h) rs
+    lawHom  :  forall {G}{{AG : Applicative G}}{H}{{AH : Applicative H}}
+                      (h : G -:> H){S T}(g : S -> G T) -> AppHom h ->
+                      (ss : F S) ->
+                      traverse (h o g) ss == h (traverse g ss)
+\end{code}
+
+Let us now check the coherence property we needed earlier.
+\begin{code}
+lengthContentssizeShape :
+  forall  {F}{{TF : Traversable F}} -> TraversableOKP F ->
+  forall  {X} (fx : F X) ->
+  fst (contentsT fx) == sizeT (shapeT fx)
+lengthContentssizeShape tokF fx =
+  fst (contentsT fx)
+    <<  TraversableOKP.lawHom tokF {{monoidApplicative}} {{monoidApplicative}}
+          fst one (monoidApplicativeHom fst) fx !!=
+  sizeT fx
+    <<  TraversableOKP.lawCo tokF {{monoidApplicative}}{{applicativeId}}
+          (\ _ -> 1) (\ _ -> <>) fx !!=
+  sizeT (shapeT fx) <QED>
+\end{code}
+
+We may now construct
+\begin{code}
+toNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
+            forall {X} -> F X -> <! normalT F !>N X
+toNormal tokf fx
+  =  shapeT fx
+  ,  subst (lengthContentssizeShape tokf fx) (Vec _) (snd (contentsT fx))
+\end{code}
