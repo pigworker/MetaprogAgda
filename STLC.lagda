@@ -8,6 +8,12 @@ open import Vec
 \end{code}
 %endif
 
+This chapter contains some standard techniques for the representation
+of typed syntax and its semantics. The joy of typed syntax is the avoidance
+of junk in its interpretation. Everything fits, just so.
+
+\section{Syntax}
+
 Last century, I learned the following recipe for well typed terms of
 the simply typed $\lambda$-calculus from Altenkirch and Reus.
 
@@ -23,7 +29,7 @@ and close under function spaces.
 %format var = "\C{var}"
 %format lam = "\C{lam}"
 %format app = "\C{app}"
-%format :: = "\!\raisebox{ -0.09in}[0in][0in]{\red{\textrm{`}}\,}"
+%format :: = "\!\raisebox{ -0.09in}[0in][0in]{\red{\textsf{`}}\,}"
 %format _::_ = "\us{" :: "}"
 
 \begin{code}
@@ -83,6 +89,9 @@ data _!-_ (Gam : Cx Ty) : Ty -> Set where
 infix 3 _!-_
 \end{code}
 
+
+\section{Semantics}
+
 Writing an interpreter for such a calculus is an exercise also from
 last century, for which we should thank Augustsson and Carlsson.
 Start by defining the semantics of each type.
@@ -120,3 +129,86 @@ Finally, define the meaning of terms.
 <! lam t !>t    gam = \ s -> <! t !>t (gam , s)
 <! app f s !>t  gam = <! f !>t gam (<! s !>t gam)
 \end{code}
+
+
+\section{Substitution with a Friendly Fish}
+
+%format Ren = "\F{Ren}"
+%format Sub = "\F{Sub}"
+
+We may define the types of simultaneous renamings and substitutions
+as type-preserving maps from variables:
+\begin{code}
+Ren Sub : Cx Ty -> Cx Ty -> Set
+Ren  Gam Del  = forall {tau} -> tau <: Gam -> tau <: Del
+Sub  Gam Del  = forall {tau} -> tau <: Gam -> Del !- tau
+\end{code}
+
+%format <>< = "\F{\propto}"
+%format _<><_ = "\us{" <>< "}"
+The trouble with defining the action of substitution for a de Bruijn
+representation is the need to shift indices when the context grows.
+Here is one way to address that situation.
+First, let me define\nudge{|<><| is pronounce `fish',
+for historical reasons.} context extension as
+concatenation with a cons-list, using the |<><| operator.
+
+\begin{code}
+_<><_ : forall {X} -> Cx X -> List X -> Cx X
+xz <>< <>        = xz
+xz <>< (x , xs)  = (xz :: x) <>< xs
+\end{code}
+
+%format Xi = "\V{\Xi}"
+%format Del = "\V{\Delta}"
+%format // = "\F{/\!\!/}"
+%format _//_ = "\us{" // "}"
+%format theta = "\V{\theta}"
+%format Shub = "\F{Shub}"
+We may then define the \emph{shiftable} simultaneous substitutions
+from |Gam| to |Del|
+as type-preserving mappings from the variables in any extension of |Gam| to
+terms in the same extension of |Del|.
+\begin{code}
+Shub : Cx Ty -> Cx Ty -> Set
+Shub Gam Del = forall Xi -> Sub (Gam <>< Xi) (Del <>< Xi)
+\end{code}
+
+By the computational behaviour of |<><|, a |Shub Gam Del| can be used
+as a |Shub (Gam :: sg) (Del :: sg)|, so we can push substitutions under
+binders very easily.
+\begin{code}
+_//_ : forall {Gam Del}(theta : Shub Gam Del){tau} -> Gam !- tau -> Del !- tau
+theta // var i    = theta <> i
+theta // lam t    = lam ((theta o _,_ _) // t)
+theta // app f s  = app (theta // f) (theta // s)
+\end{code}
+
+Of course, we shall need to construct some of these joyous shubstitutions.
+Let us first show that any simultaneous renaming can be made shiftable by
+iterative weakening.
+%format wkr = "\F{wkr}"
+%format ren = "\F{ren}"
+\begin{code}
+wkr :  forall {Gam Del sg} -> Ren Gam Del -> Ren (Gam :: sg) (Del :: sg)
+wkr r zero     = zero
+wkr r (suc i)  = suc (r i)
+
+ren :  forall {Gam Del} -> Ren Gam Del -> Shub Gam Del
+ren r <>         = var o r
+ren r (_ , Xi)   = ren (wkr r) Xi
+\end{code}
+
+%format wks = "\F{wks}"
+%format sub = "\F{sub}"
+With renaming available, we can do the same for substitutions.
+\begin{code}
+wks :  forall {Gam Del sg} -> Sub Gam Del -> Sub (Gam :: sg) (Del :: sg)
+wks s zero     = var zero
+wks s (suc i)  = ren suc // s i
+
+sub :  forall {Gam Del} -> Sub Gam Del -> Shub Gam Del
+sub s <>         = s
+sub s (_ , Xi)   = sub (wks s) Xi
+\end{code}
+

@@ -49,7 +49,7 @@ motivation for introducing vectors is exactly to allow types to
 express shape invariants.
 
 
-\subsection{Zipping Lists of Compatible Shape}
+\section{Zipping Lists of Compatible Shape}
 
 Let us remind ourselves of the situation with ordinary \emph{lists},
 which we may define in Agda as follows:
@@ -1529,3 +1529,14 @@ with coherence conditions. At time of writing, it remains undone.
 When I see a mess like that, I wonder whether replacing indexing by
 the measure of size might help.
 
+
+\section{Fixpoints of Normal Functors}
+
+%format Tree = "\D{Tree}"
+%format <$ = "\C{\langle}"
+%format $> = "\C{\rangle}"
+%format <$_$> = <$ _ $>
+\begin{code}
+data Tree (N : Normal) : Set where
+  <$_$> : <! N !>N (Tree N) -> Tree N
+\end{code}
