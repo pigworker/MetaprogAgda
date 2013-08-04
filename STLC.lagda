@@ -156,7 +156,8 @@ concatenation with a cons-list, using the |<><| operator.
 \begin{code}
 _<><_ : forall {X} -> Cx X -> List X -> Cx X
 xz <>< <>        = xz
-xz <>< (x , xs)  = (xz :: x) <>< xs
+xz <>< (x , xs)  = xz :: x <>< xs
+infixl 4 _<><_
 \end{code}
 
 %format Xi = "\V{\Xi}"
@@ -201,7 +202,7 @@ ren r (_ , Xi)   = ren (wkr r) Xi
 
 %format wks = "\F{wks}"
 %format sub = "\F{sub}"
-With renaming available, we can do the same for substitutions.
+With renaming available, we can play the same game for substitutions.
 \begin{code}
 wks :  forall {Gam Del sg} -> Sub Gam Del -> Sub (Gam :: sg) (Del :: sg)
 wks s zero     = var zero
@@ -212,3 +213,21 @@ sub s <>         = s
 sub s (_ , Xi)   = sub (wks s) Xi
 \end{code}
 
+%if False
+I wonder if there's a canny reversal trick which will fix this.
+Hope it's chips, it's chips...
+
+\begin{spec}
+fishy : forall {Gam} Xi -> Ren Gam (Gam <>< Xi)
+fishy <>        i  = i
+fishy (_ , Xi)  i  = fishy Xi (suc i)
+
+lambda :  forall {Gam sg tau} ->
+          ((forall {Xi} -> Gam :: sg <>< Xi !- sg) -> Gam :: sg !- tau) ->
+          Gam !- sg ->> tau
+lambda f = lam (f \ {Xi} -> var (fishy Xi zero))
+
+myTest : Em !- iota ->> iota
+myTest = lambda \ x -> x
+\end{spec}
+%endif
