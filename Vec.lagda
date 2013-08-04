@@ -628,7 +628,7 @@ in how to override implicit and instance arguments.}
 crush :  forall {F X Y}{{TF : Traversable F}}{{M : Monoid Y}} ->
          (X -> Y) -> F X -> Y
 crush {{M = M}} =
-  traverse {T = One}{{AG = monoidApplicative {{M}}}}
+  traverse {T = One}{{AG = monoidApplicative {{M}}}}  -- |T| arbitrary
 \end{code}
 Amusingly, we must tell Agda which |T| is intended when viewing |X -> Y| as
 |X -> (\ _ -> Y) T|. In a Hindley-Milner
@@ -1154,7 +1154,7 @@ record MonoidHom {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}(f : X -> Y) : Set wher
 For example, taking the length of a list is, in the |Normal| representation,
 trivially a homomorphism.
 \begin{code}
-fstHom : {X : Set} -> MonoidHom {<! ListN !>N X}{Nat} fst
+fstHom : forall {X} -> MonoidHom {<! ListN !>N X}{Nat} fst
 fstHom = record { respNeut = refl; resp& = \ _ _ -> refl }
 \end{code}
 
@@ -1391,11 +1391,11 @@ record TraversableOKP F {{TF : Traversable F}} : Set1 where
 
 Let us now check the coherence property we needed earlier.
 \begin{code}
-lengthContentssizeShape :
+lengthContentsSizeShape :
   forall  {F}{{TF : Traversable F}} -> TraversableOKP F ->
   forall  {X} (fx : F X) ->
   fst (contentsT fx) == sizeT (shapeT fx)
-lengthContentssizeShape tokF fx =
+lengthContentsSizeShape tokF fx =
   fst (contentsT fx)
     <<  TraversableOKP.lawHom tokF {{monoidApplicative}} {{monoidApplicative}}
           fst one (monoidApplicativeHom fst) fx !!=
@@ -1411,5 +1411,78 @@ toNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
             forall {X} -> F X -> <! normalT F !>N X
 toNormal tokf fx
   =  shapeT fx
-  ,  subst (lengthContentssizeShape tokf fx) (Vec _) (snd (contentsT fx))
+  ,  subst (lengthContentsSizeShape tokf fx) (Vec _) (snd (contentsT fx))
 \end{code}
+
+
+%format fromNormal = "\F{fromNormal}"
+%format Batch = "\F{Batch}"
+\begin{exe}
+Define |fromNormal|, reversing the direction of |toNormal|. One way to
+do it is to define what it means to be able to build something from a
+batch of contents.
+\begin{code}
+Batch : Set -> Set -> Set
+Batch X Y = Sg Nat \ n -> Vec X n -> Y
+\end{code}
+Show |Batch X| is applicative. You can then use |traverse| on a shape
+to build a |Batch| job which reinserts the contents. As above, you will
+need to prove a coherence property to show that the contents vector in
+your hand has the required length. Warning: you may encounter a consequence
+of defining |sizeT| via |crush| with ignored target type |One|, and
+need to prove that you get the same answer if you ignore something else.
+Agda's `Toggle display of hidden arguments' menu option may help you detect
+that scenario.
+%if False
+\begin{code}
+chop : forall {X} m {n} -> Vec X (m +Nat n) -> Vec X m * Vec X n
+chop zero xs = <> , xs
+chop (suc m) (x , xs) with chop m xs
+... | ys , zs = (x , ys) , zs
+
+batchApplicative : {X : Set} -> Applicative (Batch X)
+batchApplicative {X} = record
+  {  pure   =  \ y -> zero , \ _ -> y
+  ;  _<*>_  =  ^ \ m f -> ^ \ n g ->
+       m +Nat n , \ xs -> let yszs = chop m xs in f (fst yszs) (g (snd yszs))
+  }
+
+fstHom' : forall {X} -> AppHom {{batchApplicative{X}}}{{monoidApplicative}} fst
+fstHom' = record
+  {  respPure  = \ _ -> refl
+  ;  respApp   = \ _ _ -> refl
+  }
+
+eno : forall {X} -> Vec X 1 -> X
+eno (x , <>) = x
+
+stnetnocT :  forall {X F}{{TF : Traversable F}} -> F One -> Batch X (F X)
+stnetnocT {X}{{TF}} s = traverse {{TF}}{{batchApplicative{X}}} (\ _ -> 1 , eno) s
+
+lengthStnetnocSizeShape :
+  forall  {F}{{TF : Traversable F}} -> TraversableOKP F ->
+  forall  (s : F One){X} ->
+  fst (stnetnocT{X} s) == sizeT s
+lengthStnetnocSizeShape tokF s {X} =
+  fst (stnetnocT{X} s)
+    <<  TraversableOKP.lawHom tokF {{batchApplicative}}{{monoidApplicative}}
+          fst (\ _ -> 1 , eno) fstHom' s !!=
+  traverse {T = X} {{monoidApplicative}} (\ _ -> 1) s
+    =!! TraversableOKP.lawCo tokF {{applicativeId}}{{monoidApplicative}}{S = X}
+         (\ _ -> <>) (\ _ -> 1) s >>
+  sizeT s <QED>
+
+fromNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
+              forall {X} -> <! normalT F !>N X -> F X
+fromNormal tokf {X}(s , xs) with stnetnocT {X} s | lengthStnetnocSizeShape tokf s {X}
+fromNormal {{TF}} tokf (s , xs) | ._ , c | refl = c xs
+\end{code}
+%endif
+\end{exe}
+
+Showing that |toNormal| and |fromNormal| are mutually inverse looks
+like a tall order, given that the programs have been glued together
+with coherence conditions. At time of writing, it remains undone.
+When I see a mess like that, I wonder whether replacing indexing by
+the measure of size might help.
+
