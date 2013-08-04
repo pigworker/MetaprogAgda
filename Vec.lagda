@@ -28,6 +28,7 @@ id x = x
 
 %endif
 
+%format . = "."
 %format Set = "\D{Set}"
 %format Set1 = Set "_{\D{1}}"
 %format List = "\D{List}"
@@ -989,7 +990,7 @@ Agda takes things a little further by supporting $\eta$-conversion at
 some `negative' types---specifically, function types and record
 types---where a type-directed and terminating $\eta$-expansion makes
 sense. Note that a \emph{syntax}-directed `tit-for-tat' approach,
-e.g. testing |f jeq \ x . t| by testing |x !!!- f x jeq t| or |p jeq
+e.g. testing |f jeq \ x -> t| by testing |x !!!- f x jeq t| or |p jeq
 (s , t)| by |fst p jeq s| and |snd p = t|, works fine because two
 non-canonical functions and pairs are equal if and only if their
 expansions are. But if you want the $eta$-rule for |One|, you need a
@@ -1058,6 +1059,10 @@ We may register equality with Agda, via the following pragmas,
 \end{verbatim}
 and thus gain access to Agda's support for equational reasoning.
 
+%format "MonoidOK" = "\D{MonoidOK}"
+%format absorbL = "\F{absorbL}"
+%format absorbR = "\F{absorbR}"
+%format assoc = "\F{assoc}"
 Now that we have some sort of equality, we can specify laws for our
 structures, e.g., for |Monoid|.
 \begin{code}
@@ -1068,6 +1073,7 @@ record MonoidOK X {{M : Monoid X}} : Set where
     assoc    : (x y z : X) ->  (x & y) & z == x & (y & z)
 \end{code}
 
+%format natMonoidOK = "\F{natMonoidOK}"
 Let's check that |+Nat| really gives a monoid.
 %format assoc+ = "\F{assoc+}"
 \begin{code}
@@ -1080,6 +1086,8 @@ natMonoidOK = record
 \end{code}
 The |absorbL| law follows by computation, but the other two require inductive
 proof.
+%format +zero = "\F{+zero}"
+%format _+zero = "\_\!" +zero
 \begin{code}
   _+zero : forall x -> x +Nat zero == x
   zero   +zero                  = refl
@@ -1098,6 +1106,7 @@ the base case holds computationally and the step case becomes trivial
 once we have rewritten the goal by the inductive hypothesis (being the
 type of the structurally recursive call).
 
+%format listNMonoidOK = "\F{listNMonoidOK}"
 \begin{exe}[|ListN| monoid]
 This is a nasty little exercise. By all means warm up by proving that
 |List X| is a monoid with respect to concatenation, but I want you to
@@ -1145,6 +1154,9 @@ let alone prove it. What does it tell you about our |==| setup?
 
 A \emph{monoid homomorphism} is a map between their carrier sets which
 respects the operations.
+%format MonoidHom = "\D{MonoidHom}"
+%format respNeut = "\F{resp}" neut
+%format resp& = "\F{resp}" &
 \begin{code}
 record MonoidHom {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}(f : X -> Y) : Set where
   field
@@ -1153,6 +1165,7 @@ record MonoidHom {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}(f : X -> Y) : Set wher
 \end{code}
 For example, taking the length of a list is, in the |Normal| representation,
 trivially a homomorphism.
+%format fstHom = "\F{fstHom}"
 \begin{code}
 fstHom : forall {X} -> MonoidHom {<! ListN !>N X}{Nat} fst
 fstHom = record { respNeut = refl; resp& = \ _ _ -> refl }
@@ -1225,6 +1238,7 @@ record EndoFunctorOKP F {{FF : EndoFunctor F}} : Set1 where
 %format mapId = "\F{mapId}"
 %format mapCo = "\F{mapCo}"
 \begin{exe}[|Vec| functor laws]
+Show that vectors are functorial.
 \begin{spec}
 vecEndoFunctorOKP : forall {n} -> EndoFunctorOKP \ X -> Vec X n
 vecEndoFunctorOKP = ?
@@ -1255,6 +1269,14 @@ substantial chains of equational reasoning. Here are some operators
 which serve that purpose, inspired by work from Lennart Augustsson and
 Shin-Cheng Mu.
 
+%format =!! = "\F{=\!\!\![}"
+%format >> = "\F{\rangle}"
+%format _=!!_>>_ = "\_" =!! "\_" >> "\!\_"
+%format !!= = "\F{]\!\!\!=}"
+%format << = "\F{\langle}"
+%format _<<_!!=_ = "\_\!" << "\_" !!= "\_"
+%format <QED> = "\F{\square}"
+%format _<QED> = "\_" <QED>
 \begin{code}
 _=!!_>>_ : forall {l}{X : Set l}(x : X){y z} -> x == y -> y == z -> x == z
 _ =!! refl >> q = q
@@ -1275,6 +1297,7 @@ left-to-right or right-to-left, respectively, then continue the chain. Then,
 
 Meanwhile, we may need to rewrite in a context whilst building these proofs.
 In the expression syntax, we have nothing like |rewrite|.
+%format cong = "\F{cong}"
 \begin{code}
 cong : forall {k l}{X : Set k}{Y : Set l}(f : X -> Y){x y} -> x == y -> f x == f y
 cong f refl = refl
@@ -1283,6 +1306,12 @@ cong f refl = refl
 Thus armed, let us specify what makes an |Applicative| acceptable, then
 show that such a thing is certainly a |Functor|.
 \nudge{I had to $\eta$-expand |o| in lieu of subtyping.}
+%format ApplicativeOKP = "\D{ApplicativeOKP}"
+%format lawId = "\F{lawId}"
+%format lawCo = "\F{lawCo}"
+%format lawHom = "\F{lawHom}"
+%format lawCom = "\F{lawCom}"
+%format applicativeEndoFunctorOKP = "\F{applicativeEndoFunctorOKP}"
 \begin{code}
 record ApplicativeOKP F {{AF : Applicative F}} : Set1 where
   field
@@ -1313,6 +1342,7 @@ record ApplicativeOKP F {{AF : Applicative F}} : Set1 where
 %format vecApplicativeOKP = "\F{vecApplicativeOKP}"
 Check that vectors are properly applicative. You can get away with
 |rewrite| for these proofs, but you might like to try the new tools.
+%format vecApplicativeOKP = "\F{vecApplicativeOKP}"
 \begin{spec}
 vecApplicativeOKP : {n : Nat} -> ApplicativeOKP \ X -> Vec X n
 vecApplicativeOKP = ?
@@ -1350,6 +1380,11 @@ Given that |traverse| is parametric in an |Applicative|, we should expect to
 observe the corresponding naturality. We thus need a notion of
 \emph{applicative homomorphism}, being a natural transformation which respects
 |pure| and |<*>|. That is,
+%format -:> = "\dot{\to}"
+%format _-:>_ = "\us{" -:> "}"
+%format AppHom = "\D{AppHom}"
+%format respPure = "\F{resp}" pure
+%format respApp = "\F{resp}" <*>
 \begin{code}
 _-:>_ : forall (F G : Set -> Set) -> Set1
 F -:> G = forall {X} -> F X -> G X
@@ -1362,9 +1397,13 @@ record AppHom  {F}{{AF : Applicative F}}{G}{{AG : Applicative G}}
 \end{code}
 
 We may readily check that monoid homomorphisms lift to applicative homomorphisms.
+%format monoidApplicativeHom = "\F{monoidApplicativeHom}"
+%format MonoidHom.respNeut = MonoidHom . respNeut
+%format MonoidHom.resp& = MonoidHom . resp&
 \begin{code}
 monoidApplicativeHom :
-  forall {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}(f : X -> Y){{hf : MonoidHom f}} ->
+  forall {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}
+  (f : X -> Y){{hf : MonoidHom f}} ->
   AppHom {{monoidApplicative {{MX}}}} {{monoidApplicative {{MY}}}} f
 monoidApplicativeHom f {{hf}} = record
   {  respPure  = \ x -> MonoidHom.respNeut hf
@@ -1373,6 +1412,7 @@ monoidApplicativeHom f {{hf}} = record
 \end{code}
 
 Laws for |Traversable| functors are given thus:
+%format TraversableOKP = "\D{TraversableOKP}"
 \begin{code}
 record TraversableOKP F {{TF : Traversable F}} : Set1 where
   field
@@ -1390,6 +1430,9 @@ record TraversableOKP F {{TF : Traversable F}} : Set1 where
 \end{code}
 
 Let us now check the coherence property we needed earlier.
+%format lengthContentsSizeShape = "\F{lengthContentsSizeShape}"
+%format TraversableOKP.lawHom = TraversableOKP . lawHom
+%format TraversableOKP.lawCo = TraversableOKP . lawCo
 \begin{code}
 lengthContentsSizeShape :
   forall  {F}{{TF : Traversable F}} -> TraversableOKP F ->
