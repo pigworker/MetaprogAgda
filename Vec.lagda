@@ -1380,7 +1380,7 @@ Given that |traverse| is parametric in an |Applicative|, we should expect to
 observe the corresponding naturality. We thus need a notion of
 \emph{applicative homomorphism}, being a natural transformation which respects
 |pure| and |<*>|. That is,
-%format -:> = "\dot{\to}"
+%format -:> = "\F{\dot{\to}}"
 %format _-:>_ = "\us{" -:> "}"
 %format AppHom = "\D{AppHom}"
 %format respPure = "\F{resp}" pure

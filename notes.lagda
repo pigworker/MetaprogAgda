@@ -105,6 +105,8 @@ your own dependently typed language, or maybe one day in mine.
 
 \chapter{Simply Typed $\uplambda$-Calculus}
 
+%include STLC.lagda
+
 \chapter{Containers and W-types}
 
 \chapter{Indexed Containers (Levitated)}
