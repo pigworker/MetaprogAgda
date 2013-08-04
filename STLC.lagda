@@ -217,6 +217,79 @@ sub s (_ , Xi)   = sub (wks s) Xi
 I wonder if there's a canny reversal trick which will fix this.
 Hope it's chips, it's chips...
 
+\begin{code}
+_<>>_ : forall {X} -> Cx X -> List X -> List X
+Em <>> ys = ys
+(xz :: x) <>> ys = xz <>> (x , ys)
+
+nocyc : (n : Nat) -> suc n == n -> {A : Set} -> A
+nocyc n ()
+
+
+
+_+a_ : Nat -> Nat -> Nat
+zero +a y = y
+suc x +a y = x +a suc y
+
+sucI : (a b : Nat) -> (_==_ {lzero}{Nat} (suc a) (suc b)) -> a == b
+sucI .b b refl = refl
+
+grr : (x y : Nat) -> suc x +Nat y == x +Nat suc y
+grr zero y = refl
+grr (suc x) y rewrite grr x y = refl
+
+noc' : (x y : Nat) -> suc (x +Nat y) == y -> {A : Set} -> A
+noc' x zero ()
+noc' x (suc y) q = noc' x y
+     (suc (x +Nat y) =!! grr x y >> x +Nat suc y =!! sucI _ _ q >> y <QED>)
+
+noc : (x k y : Nat) -> x +a (suc k +Nat y) == y -> {A : Set} -> A
+noc zero k y q = noc' k y q
+noc (suc x) k y q = noc x (suc k) y q
+
+len : forall {X} -> Cx X -> Nat
+len Em = zero
+len (xz :: x) = suc (len xz)
+
+lenlem : forall {X}(xz : Cx X)(xs : List X) ->
+  length (xz <>> xs) == len xz +a length xs
+lenlem Em xs = refl
+lenlem (xz :: x) xs = lenlem xz (x , xs)
+
+lem0 : forall {X}(xz yz : Cx X)(xs ys : List X) ->
+       length xs == length ys ->
+       xz <>> xs == yz <>> ys -> (xz == yz) * (xs == ys)
+lem0 Em Em xs ys q q' = refl , q'
+lem0 Em (yz :: x) .(yz <>> (x , ys)) ys q refl
+ rewrite lenlem yz (x , ys) = noc (len yz) zero (length ys) q
+lem0 (xz :: x) Em xs .(xz <>> (x , xs)) q refl
+ rewrite lenlem xz (x , xs) = noc (len xz) zero (length xs)
+   (_ << q !!= _ <QED>)
+lem0 (xz :: x) (yz :: y) xs ys q q'
+  with lem0 xz yz (x , xs) (y , ys) (cong suc q) q' 
+lem0 (.yz :: .y) (yz :: y) .ys ys q q' | refl , refl = refl , refl
+
+lem : forall {X}(Del Gam : Cx X) Xi -> Del <>> <> == Gam <>> Xi ->
+      Gam <>< Xi == Del
+lem Del Gam <>       q  =
+   Gam << fst (lem0 Del Gam <> <> refl q) !!= Del <QED>
+lem Del Gam (x , Xi) q  = lem Del (Gam :: x) Xi q
+
+fishy : forall {Gam} Xi -> Ren Gam (Gam <>< Xi)
+fishy <>        i  = i
+fishy (_ , Xi)  i  = fishy Xi (suc i)
+
+lambda :  forall {Gam sg tau} ->
+          ((forall {Del Xi}{{_ : Del <>> <> == Gam <>> (sg , Xi)}} -> Del !- sg) ->
+            Gam :: sg !- tau) ->
+          Gam !- sg ->> tau
+lambda {Gam} f = lam (f \ {Del Xi}{{q}} -> subst (lem Del Gam (_ , Xi) q) (\ Gam -> Gam !- _) (var (fishy Xi zero)))
+
+myTest : Em !- (iota ->> iota) ->> (iota ->> iota)
+myTest = lambda \ f -> lambda \ x -> app f (app f x)
+
+\end{code}
+
 \begin{spec}
 fishy : forall {Gam} Xi -> Ren Gam (Gam <>< Xi)
 fishy <>        i  = i

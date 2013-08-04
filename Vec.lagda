@@ -70,7 +70,7 @@ record Sg {l : Level}(S : Set l)(T : S -> Set l) : Set l where
   field
     fst : S
     snd : T fst
-open Sg
+open Sg public
 _*_ : {l : Level} -> Set l -> Set l -> Set l
 S * T = Sg S \ _ -> T
 
@@ -82,7 +82,7 @@ infixr 1 ^_
 
 record One {l : Level} : Set l where
   constructor <>
-open One
+open One public
 \end{code}
 %endif
 
@@ -431,7 +431,7 @@ Before we get to |Applicative|, let us first say what is an |EndoFunctor|:
 record EndoFunctor (F : Set -> Set) : Set1 where
   field
     map  : forall {S T} -> (S -> T) -> F S -> F T
-open EndoFunctor {{...}}
+open EndoFunctor {{...}} public
 \end{code}
 The above record declaration creates new types |EndoFunctor F| and a new
 \emph{module}, |EndoFunctor|, containing a function, |EndoFunctor|.|map|,
@@ -454,7 +454,7 @@ record Applicative (F : Set -> Set) : Set1 where
     _<*>_   : forall {S T} -> F (S -> T) -> F S -> F T
   applicativeEndoFunctor : EndoFunctor F
   applicativeEndoFunctor = record { map = _<*>_ o pure }
-open Applicative {{...}}
+open Applicative {{...}} public
 \end{code}
 The |Applicative F| structure decomposes |F|'s |map| as the ability to make
 `constant' |F|-structures and closure under application.
@@ -490,7 +490,7 @@ record Monad (F : Set -> Set) : Set1 where
   monadApplicative = record
     {  pure   = return
     ;  _<*>_  = \ ff fs -> ff >>= \ f -> fs >>= \ s -> return (f s) }
-open Monad {{...}}
+open Monad {{...}} public
 \end{code}
 
 %format monadVec =  "\F{monadVec}"
@@ -558,7 +558,7 @@ record Monoid (X : Set) : Set where
     _&_   : X -> X -> X
   monoidApplicative : Applicative \ _ -> X
   monoidApplicative = ?
-open Monoid {{...}} -- it's not obvious that we'll avoid ambiguity
+open Monoid {{...}} public -- it's not obvious that we'll avoid ambiguity
 \end{spec}
 Complete the |Applicative| so that it behaves like the |Monoid|.
 %if False
@@ -570,7 +570,7 @@ record Monoid (X : Set) : Set where
     _&_   : X -> X -> X
   monoidApplicative : Applicative \ _ -> X
   monoidApplicative = record { pure = \ x -> neut; _<*>_ = _&_ }
-open Monoid {{...}} -- it's not obvious that we'll avoid ambiguity
+open Monoid {{...}} public -- it's not obvious that we'll avoid ambiguity
 \end{code}
 %endif
 \end{exe}
@@ -590,7 +590,7 @@ record Traversable (F : Set -> Set) : Set1 where
                 (S -> G T) -> F S -> G (F T)
   traversableEndoFunctor : EndoFunctor F
   traversableEndoFunctor = record { map = traverse }
-open Traversable {{...}}
+open Traversable {{...}} public
 \end{code}
 
 %format vtr = "\F{vtr}"
@@ -668,7 +668,7 @@ record Normal : Set1 where
     size   : Shape -> Nat
   <!_!>N : Set -> Set
   <!_!>N X = Sg Shape \ s -> Vec X (size s)
-open Normal
+open Normal public
 infixr 0 _/_
 \end{code}
 
