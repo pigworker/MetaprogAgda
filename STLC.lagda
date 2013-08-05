@@ -144,7 +144,7 @@ Ren  Gam Del  = forall {tau} -> tau <: Gam -> tau <: Del
 Sub  Gam Del  = forall {tau} -> tau <: Gam -> Del !- tau
 \end{code}
 
-%format <>< = "\F{\propto}"
+%format <>< = "\F{<\!\!>\!\!<}"
 %format _<><_ = "\us{" <>< "}"
 The trouble with defining the action of substitution for a de Bruijn
 representation is the need to shift indices when the context grows.
@@ -213,20 +213,62 @@ sub s <>         = s
 sub s (_ , Xi)   = sub (wks s) Xi
 \end{code}
 
-%if False
-I wonder if there's a canny reversal trick which will fix this.
-Hope it's chips, it's chips...
 
+\section{A Modern Convenience}
+
+Bob Atkey once remarked that ability to cope with de Bruijn indices
+was a good reverse Turing Test, suitable for detecting humaniform
+robotic infiltrators. Correspondingly, we might like to write terms
+which use real names. I had an idea about how to do that.
+
+We can build the renaming which shifts past any context extension.
+%format weak = "\F{weak}"
+\begin{code}
+weak : forall {Gam} Xi -> Ren Gam (Gam <>< Xi)
+weak <>        i  = i
+weak (_ , Xi)  i  = weak Xi (suc i)
+\end{code}
+
+Then, we can observe that to build the body of a binder, it is enough
+to supply a function which will deliver the term representing the
+variable in any suitably extended context. The context extension is given
+implicitly, to be inferred from the usage site, and then the correct
+weakening is applied to the bound variable.
+%format lambda' = "\F{lambda}"
+\begin{code}
+lambda' :  forall {Gam sg tau} ->
+           ((forall {Xi} -> Gam :: sg <>< Xi !- sg) -> Gam :: sg !- tau) ->
+           Gam !- sg ->> tau
+lambda' f = lam (f \ {Xi} -> var (weak Xi zero))
+\end{code}
+
+%format myTest' = "\F{myTest}"
+But sadly, the followinf does not typecheck
+\begin{spec}
+myTest' : Em !- iota ->> iota
+myTest' = lambda' \ x -> x
+\end{spec}
+because the following constraint is not solved:
+\[
+|(Em :: iota <>< _Xi_232 x) = (Em :: iota) : Cx Ty|
+\]
+That is, constructor-based unification is insufficient to solve for the prefix
+of a context, given a common suffix.
+
+By contrast, solving for a suffix is easy when the prefix is just a
+value: it requires only the stripping off of matching constructors.
+So, we can cajole Agda into solving the problem by working with its
+reversal, via the `chips' operator:
+%format <>> = "\F{<\!\!>\!\!>}"
+%format _<>>_ = "\us{" <>> "}"
 \begin{code}
 _<>>_ : forall {X} -> Cx X -> List X -> List X
-Em <>> ys = ys
-(xz :: x) <>> ys = xz <>> (x , ys)
+Em         <>> ys = ys
+(xz :: x)  <>> ys = xz <>> (x , ys)
+\end{code}
 
-nocyc : (n : Nat) -> suc n == n -> {A : Set} -> A
-nocyc n ()
-
-
-
+%if False
+\begin{code}
 _+a_ : Nat -> Nat -> Nat
 zero +a y = y
 suc x +a y = x +a suc y
@@ -274,33 +316,37 @@ lem : forall {X}(Del Gam : Cx X) Xi -> Del <>> <> == Gam <>> Xi ->
 lem Del Gam <>       q  =
    Gam << fst (lem0 Del Gam <> <> refl q) !!= Del <QED>
 lem Del Gam (x , Xi) q  = lem Del (Gam :: x) Xi q
+\end{code}
+%endif
 
-fishy : forall {Gam} Xi -> Ren Gam (Gam <>< Xi)
-fishy <>        i  = i
-fishy (_ , Xi)  i  = fishy Xi (suc i)
+Of course, one must prove that solving the reverse problem is good for
+solving the original.
 
+%format lem = "\F{lem}"
+\begin{exe}[reversing lemma]
+Show\nudge{I have discovered a truly appalling proof of this lemma. Fortunately, this margin is too narrow to contain it. See if you can do better.}
+\begin{spec}
+lem :  forall {X}(Del Gam : Cx X) Xi ->
+       Del <>> <> == Gam <>> Xi -> Gam <>< Xi == Del
+lem Del Gam Xi q  = ?
+\end{spec}
+\end{exe}
+
+Now we can frame the constraint solve as an instance argument supplying a
+proof of the relevant equation on cons-lists: Agda will try to use |refl|
+to solve the instance argument, triggering the tractable version of the
+unification problem.
+%format lambda = lambda'
+%format myTest = myTest'
+\begin{code}
 lambda :  forall {Gam sg tau} ->
           ((forall {Del Xi}{{_ : Del <>> <> == Gam <>> (sg , Xi)}} -> Del !- sg) ->
             Gam :: sg !- tau) ->
           Gam !- sg ->> tau
-lambda {Gam} f = lam (f \ {Del Xi}{{q}} -> subst (lem Del Gam (_ , Xi) q) (\ Gam -> Gam !- _) (var (fishy Xi zero)))
+lambda {Gam} f =
+  lam  (f \ {Del Xi}{{q}} ->
+       subst (lem Del Gam (_ , Xi) q) (\ Gam -> Gam !- _) (var (weak Xi zero)))
 
 myTest : Em !- (iota ->> iota) ->> (iota ->> iota)
 myTest = lambda \ f -> lambda \ x -> app f (app f x)
-
 \end{code}
-
-\begin{spec}
-fishy : forall {Gam} Xi -> Ren Gam (Gam <>< Xi)
-fishy <>        i  = i
-fishy (_ , Xi)  i  = fishy Xi (suc i)
-
-lambda :  forall {Gam sg tau} ->
-          ((forall {Xi} -> Gam :: sg <>< Xi !- sg) -> Gam :: sg !- tau) ->
-          Gam !- sg ->> tau
-lambda f = lam (f \ {Xi} -> var (fishy Xi zero))
-
-myTest : Em !- iota ->> iota
-myTest = lambda \ x -> x
-\end{spec}
-%endif

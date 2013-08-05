@@ -934,6 +934,7 @@ shapeT = traverse (\ _ -> <>)
 We can also define the list of elements, which should have the same length as
 the size
 %format contentsT = "\F{contentsT}"
+%format one = "\F{one}"
 \begin{code}
 one : forall {X} -> X -> <! ListN !>N X
 one x = 1 , (x , <>)
