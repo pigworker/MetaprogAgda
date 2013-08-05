@@ -4,26 +4,8 @@
 
 module Vec where
 
-postulate
-      Level : Set
-      lzero  : Level
-      lsuc   : Level -> Level
-      lmax   : Level -> Level -> Level
+open import Basics public
 
-{-# BUILTIN LEVEL     Level #-}
-{-# BUILTIN LEVELZERO lzero  #-}
-{-# BUILTIN LEVELSUC  lsuc   #-}
-{-# BUILTIN LEVELMAX  lmax   #-}
-
-_o_ : forall {i j k}
-        {A : Set i}{B : A -> Set j}{C : (a : A) -> B a -> Set k} ->
-        (f : {a : A}(b : B a) -> C a b) ->
-        (g : (a : A) -> B a) ->
-        (a : A) -> C a (g a)
-f o g = \ a -> f (g a)
-
-id : forall {k}{X : Set k} -> X -> X
-id x = x
 \end{code}
 
 %endif
@@ -63,28 +45,6 @@ data List (X : Set) : Set where
 infixr 4 _,_
 \end{code}
 
-%if False
-\begin{code}
-record Sg {l : Level}(S : Set l)(T : S -> Set l) : Set l where
-  constructor _,_
-  field
-    fst : S
-    snd : T fst
-open Sg public
-_*_ : {l : Level} -> Set l -> Set l -> Set l
-S * T = Sg S \ _ -> T
-
-^_ :  forall {k l}{S : Set k}{T : S -> Set k}{P : Sg S T -> Set l} ->
-      ((s : S)(t : T s) -> P (s , t)) ->
-      (p : Sg S T) -> P p
-(^ p) (s , t) = p s t
-infixr 1 ^_
-
-record One {l : Level} : Set l where
-  constructor <>
-open One public
-\end{code}
-%endif
 
 %format Sg = "\D{\Upsigma}"
 %format fst = "\F{fst}"
@@ -92,7 +52,7 @@ open One public
 %format * = "\F{\times}"
 %format + = "\F{+}"
 %format _+_ = "\_\!" + "\!\_"
-%format ^ = "{\scriptstyle\Lambda}"
+%format ^ = "{\scriptstyle\mathrm{V}}"
 %format One = "\D{One}"
 %format zip0 = "\F{zip}"
 
@@ -702,24 +662,24 @@ We can recover the binary sum (coproduct) by defining a two element type:
 %format Two = "\D{Two}"
 %format tt = "\C{t\!t}"
 %format ff = "\C{f\!f}"
-\begin{code}
+\begin{spec}
 data Two : Set where tt ff : Two
-\end{code}
+\end{spec}
 
 It is useful to define a conditional operator, indulging my penchant for giving
 infix operators three arguments,
 %format <?> = "\F{\left<?\right>}"
 %format _<?>_ = "\_\!" <?> "\!\_"
-\begin{code}
+\begin{spec}
 _<?>_ : forall {l}{P : Two -> Set l} -> P tt -> P ff -> (b : Two) -> P b
 (t <?> f) tt = t
 (t <?> f) ff = f
-\end{code}
+\end{spec}
 for we may then define:
-\begin{code}
+\begin{spec}
 _+_ : Set -> Set -> Set
 S + T = Sg Two (S <?> T)
-\end{code}
+\end{spec}
 Note that |<?>| has been defined to work at all levels of the predicative
 hierarchy, so that we can use it to choose between |Set|s, as well as between
 ordinary values. |Sg| thus models both choice and pairing in data structures.
@@ -1021,18 +981,18 @@ declaration.
 %format _==_ = "\us{" == "}"
 \nudge{The size of equality types is also moot. Agda would allow us to
 put |s == t| in |Set|, however large |s| and |t| may be...}
-\begin{code}
+\begin{spec}
 data _==_ {l}{X : Set l}(x : X) : X -> Set l where
   refl : x == x
 infix 1 _==_
-\end{code}
+\end{spec}
 We may certainly implement Leibniz's rule.
 %format subst = "\F{subst}"
-\begin{code}
+\begin{spec}
 subst :  forall {k l}{X : Set k}{s t : X} ->
          s == t -> (P : X -> Set l) -> P s -> P t
 subst refl P p = p
-\end{code}
+\end{spec}
 
 The only canonical proof of |s == t| is |refl|, available only if |s
 jeq t|, so we have declared that the equality predicate for
@@ -1048,12 +1008,6 @@ For now, let us acknowledge the problem and make do.
 
 We may register equality with Agda, via the following pragmas,
 \nudge{...but for this pragma, we need |_==_ {l}{X} s t : Set l|}
-%if False
-\begin{code}
-{-# BUILTIN EQUALITY _==_ #-}
-{-# BUILTIN REFL refl #-}
-\end{code}
-%endif False
 \begin{verbatim}
 {-# BUILTIN EQUALITY _==_ #-}
 {-# BUILTIN REFL refl #-}
