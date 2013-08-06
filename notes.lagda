@@ -77,7 +77,7 @@
 
 \begin{document}
 
-\title{Dependently Typed Metaprogramming: \\ (in Agda)}
+\title{Dependently Typed Metaprogramming \\ (in Agda)}
 \author{Conor McBride}
 \maketitle
 
