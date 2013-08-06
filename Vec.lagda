@@ -770,7 +770,7 @@ nOut : forall {X}(F G : Normal) -> <! F +N G !>N X -> <! F !>N X + <! G !>N X
 nOut F G xs' with nCase F G xs'
 nOut F G .(nInj F G xs) | from xs = xs
 \end{code}
-The |with| notation allows us to compute smoe useful information and add
+The |with| notation allows us to compute some useful information and add
 it to the collection of things available for inspection in pattern matching.
 By matching the result of |nCase F G xs'| as |from xs|, we discover that
 \emph{ipso facto}, |xs'| is |nInj xs|. It is in the nature of dependent
