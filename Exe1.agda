@@ -147,6 +147,8 @@ VecN n = One / pure n
 ListN : Normal
 ListN = Nat / id
 
+-- These exercises don't appear anywhere, but we did cover them during
+-- the lecture. I added a placemarker in the notes for this.
 
 K : Set -> Normal
 K A = {!!}

@@ -684,6 +684,9 @@ Note that |<?>| has been defined to work at all levels of the predicative
 hierarchy, so that we can use it to choose between |Set|s, as well as between
 ordinary values. |Sg| thus models both choice and pairing in data structures.
 
+TODO: Insert exercise/comment regarding constant functors and the
+identity being normal.
+
 I don't know about you, but I find I do a lot more arithmetic with types than I
 do with numbers, which is why I have used |*| and |+| for |Set|s. Developing a
 library of normal functors will, however, necessitate arithmetic on sizes as
