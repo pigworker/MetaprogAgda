@@ -107,7 +107,11 @@ your own dependently typed language, or maybe one day in mine.
 
 %include STLC.lagda
 
+
 \chapter{Containers and W-types}
+
+%include Containers.lagda
+
 
 \chapter{Indexed Containers (Levitated)}
 
