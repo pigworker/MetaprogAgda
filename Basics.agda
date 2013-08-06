@@ -31,11 +31,11 @@ open Sg public
 _*_ : {l : Level} -> Set l -> Set l -> Set l
 S * T = Sg S \ _ -> T
 
-^_ :  forall {k l}{S : Set k}{T : S -> Set k}{P : Sg S T -> Set l} ->
+vv_ :  forall {k l}{S : Set k}{T : S -> Set k}{P : Sg S T -> Set l} ->
       ((s : S)(t : T s) -> P (s , t)) ->
       (p : Sg S T) -> P p
-(^ p) (s , t) = p s t
-infixr 1 ^_
+(vv p) (s , t) = p s t
+infixr 1 vv_
 
 record One {l : Level} : Set l where
   constructor <>
@@ -51,6 +51,21 @@ subst :  forall {k l}{X : Set k}{s t : X} ->
          s == t -> (P : X -> Set l) -> P s -> P t
 subst refl P p = p
 
+
+_=!!_>>_ : forall {l}{X : Set l}(x : X){y z} -> x == y -> y == z -> x == z
+_ =!! refl >> q = q
+
+_<<_!!=_ : forall {l}{X : Set l}(x : X){y z} -> y == x -> y == z -> x == z
+_ << refl !!= q = q
+
+_<QED> : forall {l}{X : Set l}(x : X) -> x == x
+x <QED> = refl
+
+infixr 1 _=!!_>>_ _<<_!!=_ _<QED>
+
+cong : forall {k l}{X : Set k}{Y : Set l}(f : X -> Y){x y} -> x == y -> f x == f y
+cong f refl = refl
+
 data Two : Set where tt ff : Two
 _<?>_ : forall {l}{P : Two -> Set l} -> P tt -> P ff -> (b : Two) -> P b
 (t <?> f) tt = t
@@ -58,3 +73,8 @@ _<?>_ : forall {l}{P : Two -> Set l} -> P tt -> P ff -> (b : Two) -> P b
 
 _+_ : Set -> Set -> Set
 S + T = Sg Two (S <?> T)
+
+data Zero : Set where
+
+magic : forall {l}{A : Set l} -> Zero -> A
+magic ()

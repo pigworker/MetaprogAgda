@@ -105,17 +105,19 @@ Start by defining the semantics of each type.
 \end{code}
 
 Next, define \emph{environments} for contexts, with projection.
+We can reuse these definitions in the rest of the section if we abstract
+over the notion of value.
 %format !>C = !> "_{" Cx "}"
 %format <!_!>C = <! "\!" _ "\!" !>C
 %format !>V = !> "_{" <: "}"
 %format <!_!>V = <! "\!" _ "\!" !>V
 %format gam = "\V{\gamma}"
 \begin{code}
-<!_!>C : Cx Ty -> Set
-<! Em !>C         = One
-<! Gam :: sg !>C  = <! Gam !>C * <! sg !>T
+<!_!>C : Cx Ty -> (Ty -> Set) -> Set
+<! Em !>C         V  = One
+<! Gam :: sg !>C  V  = <! Gam !>C V * V sg
 
-<!_!>V : forall {Gam tau} -> tau <: Gam -> <! Gam !>C -> <! tau !>T
+<!_!>V : forall {Gam tau V} -> tau <: Gam -> <! Gam !>C V -> V tau
 <! zero !>V   (gam , t)  = t
 <! suc i !>V  (gam , s)  = <! i !>V gam
 \end{code}
@@ -124,7 +126,7 @@ Finally, define the meaning of terms.
 %format !>t = !> "_{" !- "}"
 %format <!_!>t = <! "\!" _ "\!" !>V
 \begin{code}
-<!_!>t : forall {Gam tau} -> Gam !- tau -> <! Gam !>C -> <! tau !>T
+<!_!>t : forall {Gam tau} -> Gam !- tau -> <! Gam !>C <!_!>T -> <! tau !>T
 <! var i !>t    gam = <! i !>V gam
 <! lam t !>t    gam = \ s -> <! t !>t (gam , s)
 <! app f s !>t  gam = <! f !>t gam (<! s !>t gam)
@@ -135,6 +137,7 @@ Finally, define the meaning of terms.
 
 %format Ren = "\F{Ren}"
 %format Sub = "\F{Sub}"
+%format Del = "\V{\Delta}"
 
 We may define the types of simultaneous renamings and substitutions
 as type-preserving maps from variables:
@@ -161,7 +164,6 @@ infixl 4 _<><_
 \end{code}
 
 %format Xi = "\V{\Xi}"
-%format Del = "\V{\Delta}"
 %format // = "\F{/\!\!/}"
 %format _//_ = "\us{" // "}"
 %format theta = "\V{\theta}"
@@ -350,3 +352,550 @@ lambda {Gam} f =
 myTest : Em !- (iota ->> iota) ->> (iota ->> iota)
 myTest = lambda \ f -> lambda \ x -> app f (app f x)
 \end{code}
+
+
+\section{Hereditary Substitution}
+
+This section is a structured series of exercises, delivering a
+$\beta\eta$-long normalization algorithm for our $\lambda$-calculus
+by the method of \emph{hereditary substitution}.
+
+The target type for the algorithm is the following right-nested spine
+representation of $\beta$-normal $\eta$-long forms.%format != = "\D{\vDash}"
+%format _!=_ = "\us{" != "}"
+%format !=* = "\D{\vDash^*}"
+%format _!=*_ = "\us{" !=* "}"
+%format $ = "\C{\scriptstyle \$}"
+%format _$_ = "\us{" $ "}"
+\begin{code}
+mutual
+
+  data _!=_ (Gam : Cx Ty) : Ty -> Set where
+    lam  : forall {sg tau} -> Gam :: sg != tau -> Gam != sg ->> tau
+    _$_  : forall {tau} -> tau <: Gam -> Gam !=* tau -> Gam != iota
+
+  data _!=*_ (Gam : Cx Ty) : Ty -> Set where
+    <>   : Gam !=* iota
+    _,_  : forall {sg tau} -> Gam != sg -> Gam !=* tau -> Gam !=* sg ->> tau
+
+infix 3 _!=_ _!=*_
+infix 3 _$_
+\end{code}
+That is |Gam != tau| is the type of normal forms \emph{in} |tau|, and
+|Gam !=* tau| is the type of spines \emph{for} a |tau|, delivering |iota|.
+
+The operation of hereditary substitution replaces \emph{one} variable with a
+normal form and immediately performs all the resulting computation (i.e., more
+substitution), returning a normal form. You will need some equipment for talking
+about individual variables.
+
+%format - = "\F{ -}"
+%format _-_ = "\us{" - "}"
+%format /= = "\F{\neq}"
+%format _/=_ = "\us{" /= "}"
+\begin{exe}[thinning]
+Define the function |-| which \emph{removes} a designated entry from a context,
+then implement the \emph{thinning} operator, being the renaming which maps the
+embed the smaller context back into the larger.
+\begin{spec}
+_-_ : forall (Gam : Cx Ty){tau}(x : tau <: Gam) -> Cx Ty
+Gam - x = ?
+infixl 4 _-_
+
+_/=_ : forall {Gam sg}(x : sg <: Gam) -> Ren (Gam - x) Gam
+x /= y = ?
+\end{spec}
+%if False
+\begin{code}
+_-_ : forall (Gam : Cx Ty){tau}(x : tau <: Gam) -> Cx Ty
+Gam :: _  - zero  = Gam
+Gam :: sg - suc x = Gam - x :: sg
+infixl 4 _-_
+
+_/=_ : forall {Gam sg}(x : sg <: Gam) -> Ren (Gam - x) Gam
+zero   /= y      = suc y
+suc x  /= zero   = zero
+suc x  /= suc y  = suc (x /= y)
+\end{code}
+%endif
+\end{exe}
+
+%format << = "\F{\langle}"
+%format := = "\F{\mapsto}"
+%format <<_:=_>>_ = << _ := _ >> _
+This much will let us frame the problem. We have a candidate value for |x|
+which does not depend on |x|, so we should be able to eliminate |x| from any
+term by substituting out. If we try, we find this situation:
+\begin{spec}
+  <<_:=_>>_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg -> 
+                       Gam != tau -> Gam - x != tau
+  << x := s >> lam t   = lam (<< suc x := ? >> t)
+  << x := s >> y $ ts  = ?
+infix 2 <<_:=_>>_
+\end{spec}
+Let us now address the challenges we face.
+
+%format Veq? = "\D{Veq?}"
+%format veq? = "\F{veq?}"
+%format same = "\C{same}"
+%format diff = "\C{diff}"
+In the application case, we shall need to test whether or not |y|
+is the |x| for which we
+must substitute, so we need some sort of equality test. A \emph{Boolean} equality
+test does not generate enough useful information---if |y| is |x|, we need to know
+that |ts| is a suitable spine for |s|; if |y| is not |x|, we need to know its
+representation in |Gam - x|.
+Hence, let us rather prove that any variable is either the one we are looking for or
+another. We may express this discriminability property as a predicate on variables.
+\begin{code}
+data Veq? {Gam sg}(x : sg <: Gam) : forall {tau} -> tau <: Gam -> Set where
+  same  :                                      Veq? x x
+  diff  : forall {tau}(y : tau <: Gam - x) ->  Veq? x (x /= y)
+\end{code}
+
+\begin{exe}[variable equality testing]
+Show that every |y| is discriminable with respect to a given |x|.
+\begin{spec}
+veq? : forall {Gam sg tau}(x : sg <: Gam)(y : tau <: Gam) -> Veq? x y
+veq? x y = ?
+\end{spec}
+Hint: it will help to use |with| in the recursive case.
+%if False
+\begin{code}
+veq? : forall {Gam sg tau}(x : sg <: Gam)(y : tau <: Gam) -> Veq? x y
+veq? zero     zero             = same
+veq? zero     (suc y)          = diff y
+veq? (suc x)  zero             = diff zero
+veq? (suc x)  (suc y)          with  veq? x y 
+veq? (suc x)  (suc .x)         |     same        = same
+veq? (suc x)  (suc .(x /= y))  |     diff y      = diff (suc y)
+\end{code}
+%endif
+\end{exe}
+
+Meanwhile, in the |lam| case, we may easily shift |x| to account for the
+new variable in |t|, but we shall also need to shift |s|.
+%format renNm = "\F{renNm}"
+%format renSp = "\F{renSp}"
+\begin{exe}[closure under renaming]
+Show how to propagate a renaming through a normal form.
+\begin{spec}
+mutual
+
+  renNm : forall {Gam Del tau} -> Ren Gam Del -> Gam != tau -> Del != tau
+  renNm r t = ?
+
+  renSp : forall {Gam Del tau} -> Ren Gam Del -> Gam !=* tau -> Del !=* tau
+  renSp r ss = ?
+\end{spec}
+%if False
+\begin{code}
+mutual
+  renNm : forall {Gam Del tau} -> Ren Gam Del -> Gam != tau -> Del != tau
+  renNm r (lam t)   = lam (renNm (wkr r) t)
+  renNm r (x $ ss)  = r x $ renSp r ss
+
+  renSp : forall {Gam Del tau} -> Ren Gam Del -> Gam !=* tau -> Del !=* tau
+  renSp r <> = <>
+  renSp r (s , ss) = renNm r s , renSp r ss
+\end{code}
+%endif
+\end{exe}
+
+Now we have everything we need to implement hereditary substitution.
+
+\begin{exe}[hereditary substitution]
+Implement hereditary substitution for normal forms and spines, defined mutually with
+application of a normal form to a spine, performing $\beta$-reduction.
+%format >>* = "\F\rangle^\ast"
+%format <<_:=_>>*_ = << _ := _ >>* _
+%format $$ = $ "\!" $
+%format _$$_ = "\us{" $$ "}"
+\begin{spec}
+mutual
+
+  <<_:=_>>_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg -> 
+                       Gam != tau -> Gam - x != tau
+  << x := s >> t = ?
+
+  <<_:=_>>*_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg ->
+                        Gam !=* tau -> Gam - x !=* tau
+  << x := s >>* ts = ?
+
+  _$$_ : forall  {Gam tau} ->
+                 Gam != tau -> Gam !=* tau -> Gam != iota
+  f      $$ ss = ?
+
+infix 3 _$$_ 
+infix 2 <<_:=_>>_
+\end{spec}
+Do you think these functions are mutually structurally recursive?
+%if False
+\begin{code}
+mutual
+  <<_:=_>>_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg -> 
+                       Gam != tau -> Gam - x != tau
+  << x := s >> lam t           = lam (<< suc x := renNm (_/=_ zero) s >> t)
+  << x := s >> y $ ts          with veq? x y 
+  << x := s >> .x        $ ts  | same         = s $$ (<< x := s >>* ts)
+  << x := s >> .(x /= y) $ ts  | diff y       = y $ (<< x := s >>* ts)
+
+  <<_:=_>>*_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg ->
+                        Gam !=* tau -> Gam - x !=* tau
+  << x := s >>* <>        = <>
+  << x := s >>* (t , ts)  = (<< x := s >> t) , (<< x := s >>* ts)
+
+  _$$_ : forall  {Gam tau} ->
+                 Gam != tau -> Gam !=* tau -> Gam != iota
+  f      $$ <>      = f
+  lam t  $$ s , ss  = (<< zero := s >> t) $$ ss
+infix 3 _$$_ 
+infix 2 <<_:=_>>_
+\end{code}
+%endif
+\end{exe}
+
+With hereditary substitution, it should be a breeze to implement
+normalization, but there is one little tricky part remaining.
+
+%format normalize = "\F{normalize}"
+\begin{exe}[$\eta$-expansion for |normalize|]
+If we start implementing |normalize|, it is easy to get this far:
+\begin{spec}
+normalize : forall {Gam tau} -> Gam !- tau -> Gam != tau
+normalize (var x)    = ?
+normalize (lam t)    = lam (normalize t)
+normalize (app f s)  with  normalize f  | normalize s
+normalize (app f s)  |     lam t        | s'        = << zero := s' >> t
+\end{spec}
+We can easily push under |lam| and implement |app| by hereditary substitution.
+However, if we encounter a variable, |x|, we must deliver it in $\eta$-long form.
+You will need to figure out how to expand |x| in a type-directed manner, which is
+not a trivial thing to do. Hint: if you need to represent the prefix of a spine,
+it suffices to consider functions from suffices.
+%if False
+\begin{code}
+eta : forall  {Gam sg}(x : sg <: Gam) tau ->
+              (forall {Del} -> Ren Gam Del -> Del !=* tau -> Del !=* sg) ->
+              Gam != tau
+eta x iota          f = x $ f id <>
+eta x (sg ->> tau)  f
+  = lam (  eta (suc x) tau \ rho ss ->
+           f (rho o suc) ((eta (rho zero) sg (\ _ -> id)) , ss))
+
+normalize : forall {Gam tau} -> Gam !- tau -> Gam != tau
+normalize (var x)    = eta x _ \ _ -> id
+normalize (lam t)    = lam (normalize t)
+normalize (app f s)  with  normalize f  | normalize s
+normalize (app f s)  |     lam t        | s'        = << zero := s' >> t
+\end{code}
+%endif
+\end{exe}
+
+Here are a couple of test examples for you to try. You may need to translate them
+into de Bruijn terms manually if you have not yet proven the `reversing lemma'.
+%format try1 = "\F{try}_{\F{1}}"
+%format try2 = "\F{try}_{\F{2}}"
+%format church2 = "\F{church}_{\F{2}}"
+\begin{code}
+try1 : Em != ((iota ->> iota) ->> (iota ->> iota)) ->> (iota ->> iota) ->> (iota ->> iota)
+try1 = normalize (lambda \ x -> x)
+
+church2 : forall {tau} -> Em !- (tau ->> tau) ->> tau ->> tau
+church2 = lambda \ f -> lambda \ x -> app f (app f x)
+
+try2 : Em != (iota ->> iota) ->> (iota ->> iota)
+try2 = normalize (app (app church2 church2) church2)
+\end{code}
+
+
+\section{Normalization by Evaluation}
+
+Let's cook normalization a different way, extracting more leverage
+from Agda's computation machinery. the idea is to model values as
+either `going' (capable of computation if applied) or `stopping'
+(incapable of computation, but not $\eta$-long). The latter terms
+look like left-nested applications of a variable.
+
+%format Stop = "\D{Stop}"
+\begin{code}
+data Stop (Gam : Cx Ty)(tau : Ty) : Set where
+  var : tau <: Gam -> Stop Gam tau
+  _$_ : forall {sg} -> Stop Gam (sg ->> tau) -> Gam != sg -> Stop Gam tau
+\end{code}
+
+\begin{exe}[|Stop| equipment]
+Show that |Stop| terms are closed under renaming, and that you can apply
+them to a spine to get a normal form.
+%format renSt = "\F{renSt}"
+%format stopSp = "\F{stopSp}"
+\begin{spec}
+renSt : forall {Gam Del tau} -> Ren Gam Del -> Stop Gam tau -> Stop Del tau
+renSt r u = ?
+
+stopSp : forall {Gam tau} -> Stop Gam tau -> Gam !=* tau -> Gam != iota
+stopSp u ss = ?
+\end{spec}
+%if False
+\begin{code}
+renSt : forall {Gam Del tau} -> Ren Gam Del -> Stop Gam tau -> Stop Del tau
+renSt r (var x) = var (r x)
+renSt r (u $ s) = renSt r u $ renNm r s
+
+stopSp : forall {Gam tau} -> Stop Gam tau -> Gam !=* tau -> Gam != iota
+stopSp (var x) ss = x $ ss
+stopSp (u $ s) ss = stopSp u (s , ss)
+\end{code}
+%endif
+\end{exe}
+
+%format Go = "\F{Go}"
+%format Val = "\F{Val}"
+%format Zero = "\D{Zero}"
+Let us now give a contextualized semantics to each type. Values either |Go| or
+|Stop|. Ground values cannot go: |Zero| is a datatype with no constructors.
+Functional values have a Kripke semantics. Wherever their
+context is meaningful, they take values to values.
+\begin{code}
+mutual
+
+  Val : Cx Ty -> Ty -> Set
+  Val Gam tau = Go Gam tau + Stop Gam tau
+
+  Go : Cx Ty -> Ty -> Set
+  Go Gam iota          = Zero
+  Go Gam (sg ->> tau)  = forall {Del} -> Ren Gam Del -> Val Del sg -> Val Del tau
+\end{code}
+
+
+\begin{exe}[renaming values and environments]
+%format renVal = "\F{renVal}"
+%format renVals = "\F{renVals}"
+%format The = "\V{\Theta}"
+%format the = "\V{\theta}"
+%format idEnv = "\F{idEnv}"
+Show that values admit renaming. Extend renaming to environments storing values.
+Construct the identity environment, mapping each variable to itself.
+\begin{spec}
+renVal : forall {Gam Del} tau -> Ren Gam Del -> Val Gam tau -> Val Del tau
+renVal tau r v = ?
+
+renVals : forall The {Gam Del} -> Ren Gam Del -> <! The !>C (Val Gam) -> <! The !>C (Val Del)
+renVals The r the = ?
+
+idEnv : forall Gam -> <! Gam !>C (Val Gam)
+idEnv Gam = ?
+\end{spec}
+%if False
+\begin{code}
+renVal : forall {Gam Del} tau -> Ren Gam Del -> Val Gam tau -> Val Del tau
+renVal tau r (ff , u) = ff , renSt r u
+renVal iota r (tt , ())
+renVal (sg ->> tau) r (tt , f) = tt , (\ r' s -> f (r' o r) s)
+
+renVals : forall The {Gam Del} -> Ren Gam Del -> <! The !>C (Val Gam) -> <! The !>C (Val Del)
+renVals Em r <> = <>
+renVals (The :: sg) r (the , s) = renVals The r the , renVal sg r s
+
+idEnv : forall Gam -> <! Gam !>C (Val Gam)
+idEnv Em = <>
+idEnv (Gam :: sg) = renVals _ suc (idEnv Gam) , (ff , var zero)
+\end{code}
+%endif
+\end{exe}
+
+\begin{exe}[application and quotation]
+%format apply = "\F{apply}"
+%format quo = "\F{quo}"
+Implement application for values. \nudge{It seems $\F{quote}$ is a
+reserved symbol in Agda.}In order to apply a stopped function, you will
+need to be able to extract a normal form for the argument, so you will also need
+to be able to `|quo|te' values as normal forms.
+\begin{spec}
+mutual
+
+  apply : forall {Gam sg tau} -> Val Gam (sg ->> tau) -> Val Gam sg -> Val Gam tau
+  apply f s = ?
+
+  quo : forall {Gam} tau -> Val Gam tau -> Gam != tau
+  quo tau v = ?
+\end{spec}
+
+%if False
+\begin{code}
+mutual
+
+  apply : forall {Gam sg tau} -> Val Gam (sg ->> tau) -> Val Gam sg -> Val Gam tau
+  apply (tt , f) s = f id s
+  apply (ff , u) s = ff , (u $ quo _ s)
+
+  quo : forall {Gam} tau -> Val Gam tau -> Gam != tau
+  quo iota (tt , ())
+  quo iota (ff , u) = stopSp u <>
+  quo (sg ->> tau) v = lam (quo tau (apply (renVal _ suc v) (ff , var zero)))
+\end{code}
+%endif
+\end{exe}
+
+For the last step, we need to compute values from terms.
+
+\begin{exe}[evaluation]
+%format eval = "\F{eval}"
+Show that every well typed term can be given a value in any context where its
+free variables have values.
+\begin{spec}
+eval : forall {Gam Del tau} -> Gam !- tau -> <! Gam !>C (Val Del) -> Val Del tau
+eval t gam = ?
+\end{spec}
+%if False
+\begin{code}
+eval : forall {Gam Del tau} -> Gam !- tau -> <! Gam !>C (Val Del) -> Val Del tau
+eval (var x) gam = <! x !>V gam
+eval (lam t) gam = tt , \ r s -> eval t (renVals _ r gam , s)
+eval (app f s) gam = apply (eval f gam) (eval s gam)
+\end{code}
+%endif
+\end{exe}
+
+With all the pieces in place, we get
+%format normByEval = "\F{normByEval}"
+\begin{code}
+normByEval : forall {Gam tau} -> Gam !- tau -> Gam != tau
+normByEval {Gam}{tau} t = quo tau (eval t (idEnv Gam))
+\end{code}
+
+\begin{exe}[numbers and primitive recursion]
+Consider extending the term language with constructors for numbers
+and a primitive recursion operator.
+%format prec = "\C{rec}"
+\begin{spec}
+  zero    : Gam !- iota
+  suc     : Gam !- iota -> Gam !- iota
+  prec    : forall {tau}  -> Gam !- tau -> Gam !- (iota ->> tau ->> tau)
+                          -> Gam !- iota -> Gam !- tau
+\end{spec}
+How should the normal forms change? How should the values change?
+Can you extend the implementation of normalization?
+\end{exe}
+
+\begin{exe}[adding adding]
+Consider making the further extension with a hardwired addition operator.
+%format add = "\C{add}"
+\begin{spec}
+  suc     : Gam !- iota -> Gam !- iota -> Gam !- iota
+\end{spec}
+Can you engineer the notion of value and the evaluator so that |normByEval|
+identifies
+\[\begin{array}{l@@{\;\mathrm{with}\;}r}
+|add zero t| & |t| \\
+|add s zero| & |s| \\
+|add (suc s) t| & |suc (add s t)|\\
+|add s (suc t)| & |suc (add s t)|\\
+|add (add r s) t| & |add r (add s t)|\\
+|add s t| & |add t s|
+\end{array}\]
+and thus yields a stronger decision procedure for equality of expressions
+involving adding? (This is not an easy exercise, especially if you want the
+last equation to hold. I must confess I have not worked out the details.)
+\end{exe}
+
+%if False
+\section{Normalization by Evaluation with Levels}
+
+mutual
+
+  data Nm : Ty -> Set where
+    lam  : forall {sg tau} -> Nm tau -> Nm (sg ->> tau)
+    ne   : forall {tau} -> Ne tau -> Nm tau
+
+  data Ne (tau : Ty) : Set where
+    var  : Nat -> Ne tau
+    app  : forall {sg} -> Ne (sg ->> tau) -> (Nat -> Nm sg) -> Ne tau
+
+mutual
+
+  Val : Ty -> Set
+  Val tau = Go tau + Ne tau
+
+  Go : Ty -> Set
+  Go iota          = Zero
+  Go (sg ->> tau)  = Val sg -> Val tau
+
+stop : forall tau -> Val tau -> Nat -> Nm tau
+stop tau           (ff , u)   n  = ne u
+stop iota          (tt , ())  n
+stop (sg ->> tau)  (tt , f)   n  = lam (stop tau (f (ff , var n)) (suc n))
+
+apply : forall {sg tau} -> Val (sg ->> tau) -> Val sg -> Val tau
+apply (tt , f) s = f s
+apply (ff , u) s = ff , app u (stop _ s)
+
+eval : forall {Gam tau} -> Gam !- tau -> <! Gam !>C Val -> Val tau
+eval (var x) gam = <! x !>V gam
+eval (lam t) gam = tt , \ s -> eval t (gam , s)
+eval (app f s) gam = apply (eval f gam) (eval s gam)
+
+data LGood (x : Nat)(tau : Ty) : Nat -> Cx Ty -> Set where
+  zero  : forall {Gam} -> LGood x tau (suc x) (Gam :: tau)
+  suc   : forall {n Gam sg} ->
+            LGood x tau n Gam -> LGood x tau (suc n) (Gam :: sg)
+
+linx : forall {n Gam x tau} -> LGood x tau n Gam -> tau <: Gam
+linx zero = zero
+linx (suc g) = suc (linx g)
+
+mutual
+  NmGood : forall (n : Nat)(Del : Cx Ty){tau} -> Nm tau -> Set
+  NmGood n Del (lam {sg = sg} t)  = NmGood (suc n) (Del :: sg) t
+  NmGood n Del (ne u)             = NeGood n Del u
+
+  NeGood : forall (n : Nat)(Del : Cx Ty){tau} -> Ne tau -> Set
+  NeGood n Del {tau} (var x) = LGood x tau n Del
+  NeGood n Del (app u s)
+    =  NeGood n Del u
+    *  (forall Xi -> let n' = length Xi +Nat n in NmGood n' (Del <>< Xi) (s n'))
+
+ValGood : forall (n : Nat)(Del : Cx Ty) tau -> Val tau -> Set
+ValGood n Del tau (ff , u) = NeGood n Del u
+ValGood n Del iota (tt , ())
+ValGood n Del (sg ->> tau) (tt , f)
+  = forall Xi -> let n' = length Xi +Nat n in
+     (v : Val sg) -> ValGood n' (Del <>< Xi) sg v ->
+                     ValGood n' (Del <>< Xi) tau (f v)
+
+EnvGood : forall (n : Nat)(Del Gam : Cx Ty) -> <! Gam !>C Val -> Set
+EnvGood n Del Em <> = One
+EnvGood n Del (Gam :: sg) (gam , s) = EnvGood n Del Gam gam * ValGood n Del sg s
+
+projLem : forall  (n : Nat)(Del Gam : Cx Ty)(gam : <! Gam !>C Val)
+                  {tau}(x : tau <: Gam) ->
+                  EnvGood n Del Gam gam -> ValGood n Del tau (<! x !>V gam)
+projLem n Del ._ _ zero (good , g) = g
+projLem n Del (Gam :: sg) (gam , _) (suc x) (good , g)
+  = projLem n Del Gam gam x good
+
+stopLem :  forall n Del tau v -> ValGood n Del tau v -> 
+           forall Xi ->  let  n' = length Xi +Nat n
+                         in   NmGood n' (Del <>< Xi) (stop tau v n')
+stopLem n Del tau (ff , u)  v' Xi = {!!}
+stopLem n Del iota (tt , ()) v' Xi
+stopLem n Del (sg ->> tau) (tt , f) v' Xi =
+  {!stopLem (suc n) (Del :: sg) tau (f (ff , var n)) !}
+
+applyLem : forall  n Del {sg tau} ->
+           (f : Val (sg ->> tau))(s : Val sg) ->
+           ValGood n Del (sg ->> tau) f -> ValGood n Del sg s ->
+           ValGood n Del tau (apply f s)
+applyLem n Del (ff , u) s f' s' = f' , stopLem n Del _ s s'
+applyLem n Del (tt , f) s f' s' = f' <> s s'
+
+evalThm : forall  (n : Nat)(Del Gam : Cx Ty)(gam : <! Gam !>C Val)
+                  {tau}(t : Gam !- tau) ->
+                  EnvGood n Del Gam gam -> ValGood n Del tau (eval t gam)
+evalThm n Del Gam gam (var x) good = projLem n Del Gam gam x good
+evalThm n Del Gam gam (lam t) good = {!!}
+evalThm n Del Gam gam (app f s) good
+  = applyLem n Del (eval f gam) (eval s gam)
+     (evalThm n Del Gam gam f good) (evalThm n Del Gam gam s good)
+
+%endif

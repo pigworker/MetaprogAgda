@@ -46,6 +46,21 @@ vmap f ss = {!!}
 zip2 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
 zip2 ss ts = {!!}
 
+
+--[Finite sets and projection from vectors]
+
+data Fin : Nat -> Set where
+  zero : {n : Nat} -> Fin (suc n)
+  suc  : {n : Nat} -> Fin n -> Fin (suc n)
+
+proj : forall {n X} -> Vec X n -> Fin n -> X
+proj xs i = {!!}
+
+tabulate : forall {n X} -> (Fin n -> X) -> Vec X n
+tabulate {n} f = {!!}
+
+-- Functors and Applicatives
+
 record EndoFunctor (F : Set -> Set) : Set1 where
   field
     map  : forall {S T} -> (S -> T) -> F S -> F T
@@ -129,6 +144,15 @@ crush {{M = M}} =
 {-Show that |Traversable| is closed under identity and composition.
 What other structure does it preserve?-}
 
+--\section{Arithmetic}
+
+_+Nat_ : Nat -> Nat -> Nat
+x +Nat y = {!!}
+
+_*Nat_ : Nat -> Nat -> Nat
+x *Nat y = {!!}
+
+
 --\section{Normal Functors}
 
 record Normal : Set1 where
@@ -154,17 +178,11 @@ K A = {!!}
 I : Normal
 I = {!!}
 
-_+Nat_ : Nat -> Nat -> Nat
-x +Nat y = {!!}
-
-_*Nat_ : Nat -> Nat -> Nat
-x *Nat y = {!!}
-
 _+N_ : Normal -> Normal -> Normal
-(ShF / szF) +N (ShG / szG) = (ShF + ShG) / ^ szF <?> szG
+(ShF / szF) +N (ShG / szG) = (ShF + ShG) / vv szF <?> szG
 
 _*N_ : Normal -> Normal -> Normal
-(ShF / szF) *N (ShG / szG) = (ShF * ShG) / ^ \ f g -> szF f +Nat szG g
+(ShF / szF) *N (ShG / szG) = (ShF * ShG) / vv \ f g -> szF f +Nat szG g
 
 nInj : forall {X}(F G : Normal) -> <! F !>N X + <! G !>N X -> <! F +N G !>N X
 nInj F G (tt , ShF , xs) = (tt , ShF) , xs
@@ -195,7 +213,7 @@ sumMonoid = record { neut = 0; _&_ = _+Nat_ }
 
 normalTraversable : (F : Normal) -> Traversable <! F !>N
 normalTraversable F = record
-  { traverse = \ {{aG}} f -> ^ \ s xs -> pure {{aG}}  (_,_ s) <*> traverse f xs }
+  { traverse = \ {{aG}} f -> vv \ s xs -> pure {{aG}}  (_,_ s) <*> traverse f xs }
 
 _oN_ : Normal -> Normal -> Normal
 F oN (ShG / szG) = <! F !>N ShG / crush {{normalTraversable F}} szG
@@ -215,6 +233,31 @@ one x = 1 , (x , <>)
 contentsT : forall {F}{{TF : Traversable F}}{X} -> F X -> <! ListN !>N X
 contentsT = crush one
 
+--[normal morphisms]
+
+_-N>_ : Normal -> Normal -> Set
+F -N> G = (s : Shape F) -> <! G !>N (Fin (size F s))
+
+nMorph : forall {F G} -> F -N> G -> forall {X} -> <! F !>N X -> <! G !>N X
+nMorph f (s , xs)  with f s
+...                | s' , is = s' , map (proj xs) is
+
+--Show how to compute the normal morphism representing a given natural
+--transformation.
+
+morphN : forall {F G} -> (forall {X} -> <! F !>N X -> <! G !>N X) -> F -N> G
+morphN f s = {!!}
+
+--[Hancock's tensor]
+_><_ : Normal -> Normal -> Normal
+(ShF / szF) >< (ShG / szG) = (ShF * ShG) / vv \ f g -> szF f *Nat szG g
+
+swap : (F G : Normal) -> (F >< G) -N> (G >< F)
+swap F G x = {!!}
+
+drop : (F G : Normal) -> (F >< G) -N> (F oN G)
+drop F G x = {!!}
+
 
 --\section{Proving Equations}
 
@@ -225,6 +268,7 @@ record MonoidOK X {{M : Monoid X}} : Set where
     absorbR  : (x : X) ->      x & neut == x
     assoc    : (x y z : X) ->  (x & y) & z == x & (y & z)
 
+{- Do this after you've defined +Nat
 natMonoidOK : MonoidOK Nat
 natMonoidOK = record
   {  absorbL  = \ _ -> refl
@@ -241,6 +285,7 @@ natMonoidOK = record
 
 listNMonoidOK : {X : Set} -> MonoidOK (<! ListN !>N X)
 listNMonoidOK {X} = {!!}
+-}
 
 {-
 \begin{exe}[a not inconsiderable problem]
@@ -283,3 +328,120 @@ record EndoFunctorOKP F {{FF : EndoFunctor F}} : Set1 where
     endoFunctorCo  : forall {R S T}(f : S -> T)(g : R -> S) ->
       map {{FF}} f o map g =1= map (f o g)
 
+--\section{Laws for |Applicative| and |Traversable|}
+
+record ApplicativeOKP F {{AF : Applicative F}} : Set1 where
+  field
+    lawId :   forall {X}(x : F X) ->
+      pure {{AF}} id <*> x == x
+    lawCo :   forall {R S T}(f : F (S -> T))(g : F (R -> S))(r : F R) ->
+      pure {{AF}} (\ f g -> f o g) <*> f <*> g <*> r == f <*> (g <*> r)
+    lawHom :  forall {S T}(f : S -> T)(s : S) ->
+      pure {{AF}} f <*> pure s == pure (f s)
+    lawCom :  forall {S T}(f : F (S -> T))(s : S) ->
+      f <*> pure s == pure {{AF}} (\ f -> f s) <*> f
+  applicativeEndoFunctorOKP : EndoFunctorOKP F {{applicativeEndoFunctor}}
+  applicativeEndoFunctorOKP = record
+    {  endoFunctorId = lawId
+    ;  endoFunctorCo = \ f g r ->
+         pure {{AF}} f <*> (pure {{AF}} g <*> r)
+           << lawCo (pure f) (pure g) r !!=
+         pure {{AF}} (\ f g -> f o g) <*> pure f <*> pure g <*> r
+           =!! cong (\ x -> x <*> pure g <*> r) (lawHom (\ f g -> f o g) f) >>
+         pure {{AF}} (_o_ f) <*> pure g <*> r 
+           =!! cong (\ x -> x <*> r) (lawHom (_o_ f) g) >>
+         pure {{AF}} (f o g) <*> r
+           <QED>
+    }
+
+
+vecApplicativeOKP : {n : Nat} -> ApplicativeOKP \ X -> Vec X n
+vecApplicativeOKP = {!!}
+
+--ApplicativeHomomorphisms
+
+_-:>_ : forall (F G : Set -> Set) -> Set1
+F -:> G = forall {X} -> F X -> G X
+
+record AppHom  {F}{{AF : Applicative F}}{G}{{AG : Applicative G}}
+               (k : F -:> G) : Set1 where
+  field
+    respPure  : forall {X}(x : X) -> k (pure x) == pure x
+    respApp   : forall {S T}(f : F (S -> T))(s : F S) -> k (f <*> s) == k f <*> k s
+
+monoidApplicativeHom :
+  forall {X}{{MX : Monoid X}}{Y}{{MY : Monoid Y}}
+  (f : X -> Y){{hf : MonoidHom f}} ->
+  AppHom {{monoidApplicative {{MX}}}} {{monoidApplicative {{MY}}}} f
+monoidApplicativeHom f {{hf}} = record
+  {  respPure  = \ x -> MonoidHom.respNeut hf
+  ;  respApp   = MonoidHom.resp& hf
+  }
+
+--Show that a homomorphism from |F| to |G| induces applicative structure
+--on their pointwise sum.
+
+homSum :  forall {F G}{{AF : Applicative F}}{{AG : Applicative G}} ->
+          (f : F -:> G) -> 
+          Applicative \ X -> F X + G X
+homSum {{AF}}{{AG}} f = {!!}
+
+homSumOKP :  forall {F G}{{AF : Applicative F}}{{AG : Applicative G}} ->
+             ApplicativeOKP F -> ApplicativeOKP G ->
+             (f : F -:> G) -> AppHom f ->
+             ApplicativeOKP _ {{homSum f}}
+homSumOKP {{AF}}{{AG}} FOK GOK f homf = {!!}
+
+-- traversable laws
+
+record TraversableOKP F {{TF : Traversable F}} : Set1 where
+  field
+    lawId   :  forall  {X}(xs : F X) -> traverse id xs == xs
+    lawCo   :  forall  {G}{{AG : Applicative G}}{H}{{AH : Applicative H}}
+                       {R S T}(g : S -> G T)(h : R -> H S)(rs : F R) ->
+               let  EH : EndoFunctor H ; EH = applicativeEndoFunctor
+               in   map{H} (traverse g) (traverse h rs)
+                      ==
+                    traverse{{TF}}{{applicativeComp AH AG}} (map{H} g o h) rs
+    lawHom  :  forall {G}{{AG : Applicative G}}{H}{{AH : Applicative H}}
+                      (h : G -:> H){S T}(g : S -> G T) -> AppHom h ->
+                      (ss : F S) ->
+                      traverse (h o g) ss == h (traverse g ss)
+
+-- fromNormal
+
+Batch : Set -> Set -> Set
+Batch X Y = Sg Nat \ n -> Vec X n -> Y
+
+
+fromNormal :  forall {F}{{TF : Traversable F}} -> TraversableOKP F ->
+              forall {X} -> <! normalT F !>N X -> F X
+fromNormal {{TF}} tokf x = {!!}
+
+
+-- fixpoints of normal functors
+
+data Tree (N : Normal) : Set where
+  <$_$> : <! N !>N (Tree N) -> Tree N
+
+NatT : Normal
+NatT = Two / 0 <?> 1
+
+zeroT : Tree NatT
+zeroT = <$ tt , <> $>
+
+sucT : Tree NatT -> Tree NatT
+sucT n = <$ ff , n , <> $>
+
+NatInd :  forall {l}(P : Tree NatT -> Set l) ->
+          P zeroT ->
+          ((n : Tree NatT) -> P n -> P (sucT n)) ->
+          (n : Tree NatT) -> P n
+NatInd P z s n = ?
+
+Dec : Set -> Set
+Dec X = X + (X -> Zero)
+
+eq? : (N : Normal)(sheq? : (s s' : Shape N) -> Dec (s == s')) ->
+      (t t' : Tree N) -> Dec (t == t')
+eq? N sheq? t t' = ?
