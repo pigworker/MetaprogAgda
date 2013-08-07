@@ -52,14 +52,14 @@ But let us not get ahead of ourselves. We can build a kit for normal
 functors corresponding to the type constructors that we often define,
 then build up composite structures.
 For example, let us have that constants and the identity are |Normal|.
-%format K = "\F{K}"
-%format I = "\F{I}"
+%format KN = "\F{K}_{\!\F{N}}"
+%format IN = "\F{I}\F{K}_{\!\F{N}}"
 \begin{code}
-K : Set -> Normal
-K A = A / \ _ -> 0
+KN : Set -> Normal
+KN A = A / \ _ -> 0
 
-I : Normal
-I = VecN 1
+IN : Normal
+IN = VecN 1
 \end{code}
 
 %format +N = + "_{\!\F{N}}"

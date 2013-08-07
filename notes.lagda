@@ -115,6 +115,9 @@ your own dependently typed language, or maybe one day in mine.
 
 \chapter{Indexed Containers (Levitated)}
 
+%include IxCon.lagda
+
+
 \chapter{Induction-Recursion}
 
 \chapter{Observational Equality}

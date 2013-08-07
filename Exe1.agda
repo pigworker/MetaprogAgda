@@ -172,11 +172,11 @@ ListN : Normal
 ListN = Nat / id
 
 
-K : Set -> Normal
-K A = {!!}
+KN : Set -> Normal
+KN A = {!!}
 
-I : Normal
-I = {!!}
+IN : Normal
+IN = {!!}
 
 _+N_ : Normal -> Normal -> Normal
 (ShF / szF) +N (ShG / szG) = (ShF + ShG) / vv szF <?> szG
@@ -437,11 +437,11 @@ NatInd :  forall {l}(P : Tree NatT -> Set l) ->
           P zeroT ->
           ((n : Tree NatT) -> P n -> P (sucT n)) ->
           (n : Tree NatT) -> P n
-NatInd P z s n = ?
+NatInd P z s n = {!!}
 
 Dec : Set -> Set
 Dec X = X + (X -> Zero)
 
 eq? : (N : Normal)(sheq? : (s s' : Shape N) -> Dec (s == s')) ->
       (t t' : Tree N) -> Dec (t == t')
-eq? N sheq? t t' = ?
+eq? N sheq? t t' = {!!}
