@@ -3,6 +3,7 @@
 module IxCon where
 
 open import Vec public
+open import STLC public
 \end{code}
 %endif
 
@@ -44,3 +45,49 @@ structure thus describes the predicate transformer which describes the
 precondition for achieving a postcondition by one step of interaction.
 We are just using proof-relevant Hoare logic as the type system!
 
+
+\section{Petersson-Synek Trees}
+
+Kent Petersson and Dan Synek proposed a universal inductive family,
+amounting to the fixpoint of an indexed container
+
+\begin{code}
+data Tree {J : Set}(C : J i> J)(j : J) : Set where
+  <$_$> : <! C !>i (Tree C) j -> Tree C j
+\end{code}
+
+The natural numbers are a friendly, if degenerate example.
+%format NatC = "\F{NatC}"
+%format zeroC = "\F{zeroC}"
+%format sucC = "\F{sucC}"
+\begin{code}
+NatC : One i> One
+NatC = (\ _ -> Two) <1 (\ _ -> Zero <?> One) $ _
+
+zeroC : Tree NatC <>
+zeroC = <$ tt , magic $>
+
+sucC : Tree NatC <> -> Tree NatC <>
+sucC n = <$ ff , pure n $>
+\end{code}
+This is just the indexed version of the |W|-type, so the same issue with
+extensionality arises.
+
+We may also define the node structure for vectors as an instance.
+%format VecC = "\F{VecC}"
+%format VS = "\F{VS}"
+%format VP = "\F{VP}"
+%format Vr = "\F{Vr}"
+\begin{code}
+VecC : Set -> Nat i> Nat
+VecC X = VS <1 VP $ Vr where  -- depending on the length
+  VS : Nat -> Set
+  VS zero             = One   -- nil is unlabelled
+  VS (suc n)          = X     -- cons carried an element
+  VP : (n : Nat) -> VS n -> Set
+  VP zero     _       = Zero  -- nil has no children
+  VP (suc n)  _       = One   -- cons has one child
+  Vr : (n : Nat)(s : VS n)(p : VP n s) -> Nat
+  Vr zero     <>  ()          -- nil has no children to index
+  Vr (suc n)  x   <>  = n     -- the tail of a cons has the length one less
+\end{code}
