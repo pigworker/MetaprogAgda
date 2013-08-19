@@ -166,6 +166,7 @@ nSplit F G ((f , g) , .(ys ++ zs)) | from (ys , zs) = from ((f , ys) , (g , zs))
 \begin{exe}[|ListN| monoid]
 While you are in this general area, construct (from readily available components)
 the usual monoid structure for our normal presentation of lists.
+%format listNMonoid = "\F{listNMonoid}"
 \begin{spec}
 listNMonoid : {X : Set} -> Monoid (<! ListN !>N X)
 listNMonoid = ?

@@ -91,3 +91,13 @@ VecC X = VS <1 VP $ Vr where  -- depending on the length
   Vr zero     <>  ()          -- nil has no children to index
   Vr (suc n)  x   <>  = n     -- the tail of a cons has the length one less
 \end{code}
+
+\begin{exe}[simply typed $\lambda$-calculus]
+Define the simply typed $\lambda$-terms as Petersson-Synek trees.
+%format STLC = "\F{STLC}"
+\begin{spec}
+STLC : (Cx Ty * Ty) i> (Cx Ty * Ty)
+STLC = ?
+\end{spec}
+Implement the constructors.
+\end{exe}
