@@ -88,7 +88,7 @@ nInj F G (ff , ShG , xs) = (ff , ShG) , xs
 Now, we could implement the other direction of the isomorphism, but an
 alternative is to define the \emph{inverse image}.
 
-%format ^-1 = "{}^{\F{ -1}}"
+%format ^-1 = "{}^{\D{ -1}}"
 %format from = "\C{from}"
 \begin{code}
 data _^-1_ {S T : Set}(f : S -> T) : T -> Set where

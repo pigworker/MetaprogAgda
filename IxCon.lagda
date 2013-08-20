@@ -3,6 +3,7 @@
 module IxCon where
 
 open import Vec public
+open import Normal public
 open import STLC public
 \end{code}
 %endif
@@ -172,12 +173,14 @@ It is not difficult to show that indexed containers have an identity
 composition which is compatible up to isomorphism with those of their
 interpretations.
 
+%format IdIx = "\F{IdIx}"
+%format CoIx = "\F{CoIx}"
 \begin{exe}[identity and composition]
 Construct
 \begin{spec}
 IdIx : forall {I} -> I i> I
 IdIx = ?
-\end{code}
+\end{spec}
 %if False
 \begin{code}
 IdIx : forall {I} -> I i> I
@@ -191,7 +194,7 @@ Similarly, construct the composition
 \begin{spec}
 CoIx : forall {I J K} -> J i> K -> I i> J -> I i> K
 CoIx C C' = ?
-\end{code}
+\end{spec}
 %if False
 \begin{code}
 CoIx : forall {I J K} -> J i> K -> I i> J -> I i> K
@@ -212,6 +215,15 @@ dependent types to a greater extent. We\nudge{My motivation for level
 polymorphism will appear in due course.} may describe a class of
 indexed functors, as follows.
 
+%format lsuc = "\C{lsuc}"
+%format Desc = "\D{Desc}"
+%format sg = "\C{\upsigma}"
+%format pi = "\C{\uppi}"
+%format *D = "\C{\times}_{\C{D}}"
+%format _*D_ = "\us{" *D "}"
+%format kD = "\C{\upkappa}"
+%format !>D = !> "_{\!\F{D}}"
+%format <!_!>D = <! _ !>D
 \begin{code}
 data Desc {l}(I : Set l) : Set (lsuc l) where
   var    : I -> Desc I
@@ -233,6 +245,7 @@ which admit a direct interpretation as follows
 A family of such descriptions in |J -> Desc I| thus determines, pointwise,
 a functor from |I -> Set| to |J -> Set|. It is easy to see that every indexed
 container has a description.
+%format ixConDesc = "\F{ixConDesc}"
 \begin{code}
 ixConDesc : forall {I J} -> I i> J -> J -> Desc I
 ixConDesc (S <1 P $ r) j = sg (S j) \ s -> pi (P j s) \ p -> var (r j s p)
@@ -242,6 +255,9 @@ Meanwhile, up to isomorphism at least, we can go the other way around.
 
 \begin{exe}[from |J -> Desc I| to |I i> J|]
 Construct functions
+%format DSh = "\F{DSh}"
+%format DPo = "\F{DPo}"
+%format Dri = "\F{Dri}"
 \begin{spec}
 DSh : {I : Set} -> Desc I -> Set
 DSh D = ?
@@ -274,6 +290,7 @@ Dri (kD A) s ()
 \end{code}
 %endif
 in order to compute the indexed container form of a family of descriptions.
+%format descIxCon = "\F{descIxCon}"
 \begin{code}
 descIxCon : forall {I J} -> (J -> Desc I) -> I i> J
 descIxCon F = (DSh o F) <1 (DPo o F) $ (Dri o F)
@@ -293,6 +310,7 @@ but let us explore description awhile.
 Descriptions are quite a lot like inductive family declarations. The
 traditional |Vec| declaration corresponds to
 
+%format vecD = "\F{vecD}"
 \begin{code}
 vecD : Set -> Nat -> Desc Nat
 vecD X n =
@@ -306,6 +324,7 @@ in the return types of constructors become explicit equational constraints.
 However, in defining a family of descriptions, we are free to use the full
 computational power of the function space, inspecting the index, e.g.
 
+%format vecD' = vecD
 \begin{code}
 vecD' : Set -> Nat -> Desc Nat
 vecD' X zero     = kD One
@@ -316,15 +335,31 @@ To obtain a datatype from a description, we can turn it into a container and
 use the Petersson-Synek tree, or we can preserve the first orderness of first
 order things and use the direct interpretation.
 
+%format Data = "\D{Data}"
 \begin{code}
 data Data {l}{J : Set l}(F : J -> Desc J)(j : J) : Set l where
   <$_$> : <! F j !>D (Data F) -> Data F j
 \end{code}
 
+%format vnil0 = "\F{vnil}"
+%format vcons0 =  "\F{vcons}"
+For example, let us once again construct vectors.
+\begin{code}
+vnil0 : forall {X} -> Data (vecD' X) zero
+vnil0 = <$ <> $>
+
+vcons0 : forall {X n} -> X -> Data (vecD' X) n -> Data (vecD' X) (suc n)
+vcons0 x xs = <$ x , xs $>
+\end{code}
+
+
 \begin{exe}[something like `levitation']
 Construct a family of descriptions which describes a type like |Desc|.
 As Agda is not natively cumulative, you will need to shunt types up
 through the |Set l| hierarchy by hand, with this gadget:
+%format Up = "\D{\Uparrow}"
+%format up = "\C{\uparrow}"
+%format down = "\F{\downarrow}"
 \begin{code}
 record Up {l}(X : Set l) : Set (lsuc l) where
   constructor up
@@ -333,6 +368,7 @@ record Up {l}(X : Set l) : Set (lsuc l) where
 open Up
 \end{code}
 Now implement
+%format DescD = "\F{DescD}"
 \begin{spec}
 DescD : forall {l}(I : Set l) -> One{lsuc l} -> Desc (One{lsuc l})
 DescD {l} I _ = ?
@@ -352,6 +388,7 @@ DescD {l} I _ = sg DescT (\
 \end{code}
 %endif
 Check that you can map your described descriptions back to descriptions.
+%format desc = "\D{desc}"
 \begin{spec}
 desc : forall {l}{I : Set l} -> Data (DescD I) <> -> Desc I
 desc D = ?
@@ -376,6 +413,11 @@ identified with the internal |Data (DescD I) <>| so that |Data| is the
 
 \section{Some Useful Predicate Transformers}
 
+%format Everywhere = "\F{Everywhere}"
+%format Somewhere = "\F{Somewhere}"
+%format EverywhereD = "\F{EverywhereD}"
+%format SomewhereD = "\F{SomewhereD}"
+
 A container stores a bunch of data. If we have a predicate |P| on
 data, it might be useful to formulate the predicates on bunches of
 data asserting that |P| holds \emph{everywhere} or \emph{somewhere}.
@@ -394,6 +436,7 @@ The witnesses to the property of the elements of the original container
 become the elements of the derived container.
 The trivial predicate holds everywhere.
 
+%format allTrivial = "\F{allTrivial}"
 \begin{code}
 allTrivial : forall {I J}(C : I i> J)(X : I -> Set) jc ->
              <! Everywhere C X !>i (\ _ -> One) jc
@@ -425,6 +468,7 @@ Somewhere (S <1 P $ r) X
 \end{code}
 %endif
 Check that the impossible predicate cannot hold somewhere.
+%format noMagic = "\F{noMagic}"
 \begin{spec}
 noMagic : forall {I J}(C : I i> J)(X : I -> Set) jc ->
              <! Somewhere C X !>i (\ _ -> Zero) jc -> Zero
@@ -444,8 +488,9 @@ the evidence that a type equal to |T| is somewhere. Environment lookup is
 just the obvious property that if |Q| holds everywhere and |R| holds somewhere,
 then their conjunction holds somewhere, too.
 
-\begin{exe}[lookup]
-Implement generalized environment lookup.
+%format lookup = "\F{lookup}"
+\begin{exe}[|lookup|]
+Implement generalized environment |lookup|.
 \begin{spec}
 lookup :  forall {I J}(C : I i> J)(X : I -> Set) jc {Q R} ->
           <! Everywhere C X !>i Q jc -> <! Somewhere C X !>i R jc ->
@@ -466,6 +511,7 @@ A key use of the |Everywhere| transformer is in the formulation
 of \emph{induction} principles. The induction hypotheses amount to
 asserting that the induction predicate holds at every substructure..
 
+%format treeInd = "\F{treeInd}"
 \begin{code}
 treeInd :  forall {I}(C : I i> I)(P : Sg I (Tree C) -> Set) ->
            (  <! Everywhere C (Tree C) !>i P -:>
@@ -476,6 +522,7 @@ treeInd C P m i <$ s , k $> = m (i , s , k) (<> , \ p -> treeInd C P m _ (k p))
 
 The step method of the above looks a bit like an algebra, modulo plumbing.
 
+%format treeFold = "\F{treeFold}"
 \begin{exe}[induction as a fold]
 Petersson-Synek trees come with a `fold' operator, making |Tree C|
 (weakly) initial for |<! C !>i|. We can compute any |P| from a |Tree C|,
@@ -492,6 +539,7 @@ compute why some |P : Sg I (Tree C) -> Set| always holds, we'll need an
 indexed container storing |P|s in positions corresponding to the children
 of a given tree. The |Everywhere C| construct does most of the work,
 but you need a little adaptor to unwrap the |C| container inside the |Tree C|.
+%format Children = "\F{Children}"
 \begin{spec}
 Children : forall {I}(C : I i> I) -> Sg I (Tree C) i> Sg I (Tree C)
 Children C = CoIx ? (Everywhere C (Tree C))
@@ -511,12 +559,14 @@ Children C = CoIx (Delta kids) (Everywhere C (Tree C))
 Now, you can extract a general induction principle for |Tree C| from
 |treeFold (Children C)|, but you will need a little construction. Finish the
 job.
+%format treeFoldInd = "\F{treeFoldInd}"
 \begin{spec}
 treeFoldInd :  forall {I}(C : I i> I) P ->
                (<! Children C !>i P -:> P) ->
                forall it -> P it
 treeFoldInd C P m (i , t) = treeFold (Children C) P m (i , t) ?
 \end{spec}
+%if False
 \begin{code}
 children : forall {I}(C : I i> I) i t -> Tree (Children C) (i , t)
 children C i <$ s , k $> = <$ _ , (vv (\ _ p -> children C _ (k p))) $>
@@ -526,6 +576,7 @@ treeFoldInd :  forall {I}(C : I i> I) P ->
                forall it -> P it
 treeFoldInd C P m (i , t) = treeFold (Children C) P m (i , t) (children C i t)
 \end{code}
+%endif
 Of course, you need to do what is effectively an inductive proof to fill in the
 hole. Induction really does amount to more than weak initiality. But one last
 induction will serve for all.
@@ -534,7 +585,7 @@ induction will serve for all.
 What goes for containers goes for descriptions. We can biuld all the equipment of
 this section for |Desc| and |Data|, too.
 
-\begin{exe}[everywhere and somewhere for |Desc|]
+\begin{exe}[|Everywhere| and |Somewhere| for |Desc|]
 Define suitable description transformers, capturing what it means for a predicate to hold in every or some element position within a given described structure.
 \begin{spec}
 EverywhereD SomewhereD :  {I : Set}(D : Desc I)(X : I -> Set) ->
@@ -542,6 +593,7 @@ EverywhereD SomewhereD :  {I : Set}(D : Desc I)(X : I -> Set) ->
 EverywhereD  D X xs = ?
 SomewhereD   D X xs = ?
 \end{spec}
+%if False
 \begin{code}
 EverywhereD SomewhereD :  {I : Set}(D : Desc I)(X : I -> Set) ->
                           <! D !>D X -> Desc (Sg I X)
@@ -557,7 +609,9 @@ SomewhereD (D *D D') X (xs , xs') =
   sg Two (SomewhereD D X xs <?> SomewhereD D' X xs')
 SomewhereD (kD A) X a = kD Zero
 \end{code}
+%endif
 Now construct
+%format dataInd = "\F{dataInd}"
 \begin{spec}
 dataInd : forall {I : Set}(F : I -> Desc I)(P : Sg I (Data F) -> Set) ->
           (  (i : I)(ds : <! F i !>D (Data F)) ->
@@ -591,6 +645,7 @@ data structures to be containers themselves. Consider, e.g., the
 humble vector: might we not consider the vector's elements to be a
 kind of contained thing, just as much as its subvectors? We can just throw
 in an extra kind of element!
+%format vecNodeIx = "\F{vecNodeIx}"
 \begin{code}
 vecNodeIx : (One + Nat) i> Nat
 vecNodeIx = descIxCon {J = Nat} \
@@ -601,6 +656,7 @@ vecNodeIx = descIxCon {J = Nat} \
 
 That is enough to see vector \emph{nodes} as containers of elements or
 subnodes, but it still does not give \emph{vectors} as containers:
+%format vecIx = "\F{vecIx}"
 \begin{spec}
 vecIx : One i> Nat
 vecIx = ?
@@ -608,15 +664,17 @@ vecIx = ?
 We should be able to solve this goal by taking |vecNodeIx| and tying a
 recursive knot at positions labelled |(ff , n)|, retaining positions
 labelled |(tt , <>)|. Let us try the general case.
+%format MuIx = "\F{\upmu{}Ix}"
 \begin{code}
 MuIx : forall {I J} -> (I + J) i> J -> I i> J
-MuIx {I}{J} F = (Tree F' o _,_ ff) <1 (P o _,_ ff) $ (r o _,_ ff) where
+MuIx {I}{J} F = (Tree F' o _,_ ff) <1 (P' o _,_ ff) $ (r' o _,_ ff) where
 \end{code}
 The shapes of the recursive structures are themselves trees, with unlabelled
 leaves at |I|-indexed places and |F|-nodes in |J|-indexed places. We could try
 to work in |J i> J|, cutting out the non-recursive positions. However, it is
 easier to shift to |(I + J) i> (I + J)|, introducing `unlabelled leaf' as the
 dull node structure whenever an |I| shape is requested. We may construct
+%format F' = "\F{F'}"
 \begin{code}
   F'  :   (I + J) i> (I + J)
   F'  =   (vv (\ i -> One)     <?> Sh F)
@@ -626,21 +684,29 @@ dull node structure whenever an |I| shape is requested. We may construct
 and then choose to start with |(ff , j)| for the given top level |j| index.
 A position is then a path to a leaf: either we are at a leaf already, or we
 must descend further.
+%format P' = "\F{P'}"
 \begin{code}
-  P : (x : I + J) -> Tree F' x -> Set
-  P (tt , i)  _            = One
-  P (ff , j)  <$ s , k $>  = Sg (Po F j s) \ p -> P (ri F j s p) (k p)
+  P' : (x : I + J) -> Tree F' x -> Set
+  P' (tt , i)  _            = One
+  P' (ff , j)  <$ s , k $>  = Sg (Po F j s) \ p -> P' (ri F j s p) (k p)
 \end{code}
 Finally, we may follow each path to its indicated leaf and return the
 index which sent us there.
+%format r' = "\F{r'}"
 \begin{code}
-  r : (x : I + J)(t : Tree F' x) -> P x t -> I
-  r (tt , i)  _            _         = i
-  r (ff , j)  <$ s , k $>  (p , ps)  = r _ (k p) ps
+  r' : (x : I + J)(t : Tree F' x) -> P' x t -> I
+  r' (tt , i)  _            _         = i
+  r' (ff , j)  <$ s , k $>  (p , ps)  = r' _ (k p) ps
 \end{code}
+%format F' = "\V{F'}"
+%format P' = "\V{P'}"
+%format r' = "\V{r'}"
 
 Let us check that this recipe cooks the vectors.
 
+%format Vec' = "\F{Vec}"
+%format vnil' = "\F{vnil}"
+%format vcons' = "\F{vcons}"
 \begin{code}
 vecIx : One i> Nat
 vecIx = MuIx vecNodeIx
@@ -657,14 +723,28 @@ vcons' x (s , k)
   ,          (\ { ((tt , _) , _) -> x           ; ((ff , _) , p) -> k p })
 \end{code}
 
+
+\section{Adding fixpoints to |Desc|}
+
+%format Desc' = Desc
+%format mu = "\C{\upmu}"
+%format !>' = !>D
+%format <!_!>' = <! _ !>'
+%format Data' = Data
+
+We can extend descriptions to include a fixpoint operator:
 \begin{code}
 data Desc' (I : Set) : Set1 where
-  var : I -> Desc' I
-  sg pi : (A : Set)(D : A -> Desc' I) -> Desc' I
-  _*D_ : Desc' I -> Desc' I -> Desc' I
-  kD : Set -> Desc' I
-  mu : (J : Set) -> (J -> Desc' (I + J)) -> J -> Desc' I
+  var    : I -> Desc' I
+  sg pi  : (A : Set)(D : A -> Desc' I) -> Desc' I
+  _*D_   : Desc' I -> Desc' I -> Desc' I
+  kD     : Set -> Desc' I
+  mu     : (J : Set) -> (J -> Desc' (I + J)) -> J -> Desc' I
+\end{code}
 
+The interpretation must now be defined mutuallu with the universal
+inductive type.
+\begin{code}
 mutual
   <!_!>' : forall {I} -> Desc' I -> (I -> Set) -> Set
   <! var i !>'     X  = X i
@@ -677,4 +757,146 @@ mutual
   data Data' {I J}(F : J -> Desc' (I + J))(X : I -> Set)(j : J) : Set where
     <$_$> : <! F j !>' (vv X <?> Data' F X) -> Data' F X j
 \end{code}
+
+Indeed, |Desc Zero| now does quite a good job of reflecting |Set|,
+except that the domains of |sg| and |pi| are not concretely represented,
+an issue we shall attend to in the next chapter.
+
+
+\begin{exe}[induction]
+State and prove the induction principle for |Desc'|. (This is not an
+easy exercise.)
+\end{exe}
+
+
+\section{Jacobians}
+
+I am always amused when computing people complain about being made to
+learn mathematics choose calculus as their favourite example of
+something that is of no use to them. I, for one, am profoundly
+grateful to have learned vector calculus: it is exactly what you need
+to develop notions of `context' for dependent datatypes.
+
+%format ~ = "\F{ -}"
+%if False
+\begin{code}
+_~_ : (X : Set)(x : X) -> Set
+X ~ x = Sg X \ x' -> x' == x -> Zero
+\end{code}
+%endif
+
+An indexed container in |I i> J| explains |J| sorts of structure in
+terms of |I| sorts of elements, and as such, we acquire a \emph{Jacobian
+matrix} of partial derivatives, in |I i> (J * I)|. A |(j , i)| derivative
+is a structure of index |j| with a hole of index |i|. Here's how we
+build it.
+%format Jac = "\F{\mathcal{J}}"
+\begin{code}
+Jac : forall {I J} -> I i> J -> I i> (J * I)
+Jac (S <1 P $ r)
+  =   (\ { (j , i) -> Sg (S j) \ s -> r j s ^-1 i })
+  <1  (\ { (j , .(r j s p)) (s , from p) -> P j s ~ p })
+  $   (\ { (j , .(r j s p)) (s , from p) (p' , _) -> r j s p' })
+\end{code}
+The shape of an |(i , j)|-derivative must select a |j|-indexed shape
+for the structure, together with a position (the hole) whose index is
+|i|. As in the simple case, a position in the derivative is any position
+other than the hole, and its index is calculated as before.
+
+\begin{exe}[plugging]
+Check\nudge{Einstein's summation convention might be useful to infer the choice
+and placement of quantifiers.}
+that a decidable equality for positions is enough to define the
+`plugging in' function.
+\begin{spec}
+plug :  forall {I J}(C : I i> J) ->
+        ((j : J)(s : Sh C j)(p p' : Po C j s) -> Dec (p == p')) ->
+        forall {i j X} -> <! Jac C !>i X (j , i) -> X i -> <! C !>i X j
+plug C eq? jx x = ?
+\end{spec}
+%if False
+\begin{code}
+plug :  forall {I J}(C : I i> J) ->
+        ((j : J)(s : Sh C j)(p p' : Po C j s) -> Dec (p == p')) ->
+        forall {i j X} -> <! Jac C !>i X (j , i) -> X i -> <! C !>i X j
+plug C eq? {X = X} ((s , from p) , k) x = s , help where
+  help : (p : Po C _ s) -> X (ri C _ s p)
+  help p' with eq? _ s p' p 
+  help .p | tt , refl = x
+  help p' | ff , np = k (p' , np)
+\end{code}
+%endif
+\end{exe}
+
+%format Zipper = "\F{Zipper}"
+%format zipOut = "\F{zipOut}"
+\begin{exe}[the Zipper]
+For a given |C : I i> I|, construct the indexed container
+|Zipper C : (I * I) i> (I * I)| such that |Tree (Zipper C) (ir , ih)|
+represents a one |ih|-hole context in a |Tree C ir|, represented
+as a sequence of hole-to-root layers.
+\begin{spec}
+Zipper : forall {I} -> I i> I -> (I * I) i> (I * I)
+Zipper C = ?
+\end{spec}
+%if False
+\begin{code}
+Zipper : forall {I} -> I i> I -> (I * I) i> (I * I)
+Zipper {I} C
+  =   (\ { (ir , ih) ->
+              (ir == ih) + Sg I \ ip -> <! Jac C !>i (Tree C) (ip , ih) } )
+  <1  (\ { _ (tt , _) -> Zero ; _ (ff , _) -> One })
+  $   (\ { _ (tt , _) () ; (ir , ih) (ff , (ip , _)) _ -> (ir , ip) })
+\end{code}
+%endif
+Check that you can zipper all the way out to the root.
+\begin{spec}
+zipOut :  forall {I}(C : I i> I){ir ih} ->
+          ((i : I)(s : Sh C i)(p p' : Po C i s) -> Dec (p == p')) ->
+          Tree (Zipper C) (ir , ih) -> Tree C ih -> Tree C ir
+zipOut C eq? cz t = ?
+\end{spec}
+%if False
+\begin{code}
+zipOut :  forall {I}(C : I i> I){ir ih} ->
+          ((i : I)(s : Sh C i)(p p' : Po C i s) -> Dec (p == p')) ->
+          Tree (Zipper C) (ir , ih) -> Tree C ih -> Tree C ir
+zipOut C eq? <$ (tt , refl)     , _ $>   t  = t
+zipOut C eq? <$ (ff , (_ , c))  , cz $>  t
+  = zipOut C eq? (cz <>) <$ plug C eq? c t $>
+\end{code}
+%endif
+\end{exe}
+
+%format Grad = "\F{\nabla}"
+\begin{exe}[differentiating |Desc|]
+The notion corresponding to |Jac| for descriptions is |Grad|\nudge{"grad"},
+computing a `vector' of partial derivatives. Define it
+symbolically.\nudge{Symbolic differentiation is the first example
+of a pattern matching program in my father's thesis (1970).}
+\begin{spec}
+Grad : {I : Set} -> Desc I -> I -> Desc I
+Grad D h = ?
+\end{spec}
+%if False
+\begin{code}
+Grad : {I : Set} -> Desc I -> I -> Desc I
+Grad (var i) h = kD (i == h)
+Grad (sg A D) h = sg A \ a -> Grad (D a) h
+Grad (pi A D) h = sg A \ a -> Grad (D a) h *D pi (A ~ a) \ { (a' , _) -> D a' }
+Grad (D *D E) h = sg Two ((Grad D h *D E) <?> (D *D Grad E h))
+Grad (kD A) h = kD Zero
+\end{code}
+%endif
+Hence construct suitable zippering equipment for |Data|.
+\end{exe}
+
+It is amusing to note that the mathematical notion of \emph{divergence},
+|Grad . D|, corresponds exactly to the choice of decompositions of a
+|D|-structure into any element-in-context:
+\[
+  |sg I \ i -> Grad D i *D var i|
+\]
+I have not yet found a meaning for \emph{curl}, |Grad * D|, nor am I expecting
+Maxwell's equations to pop up anytime soon. But I live in hope for light.
 

@@ -78,3 +78,6 @@ data Zero : Set where
 
 magic : forall {l}{A : Set l} -> Zero -> A
 magic ()
+
+Dec : Set -> Set
+Dec X = X + (X -> Zero)

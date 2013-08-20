@@ -91,10 +91,10 @@ induction N P p <$ s , ts $> = p s ts (hyps ts) where
 %format Zero = "\D{Zero}"
 We say a property is \emph{decided} if we know whether it is true or false,
 where falsity is indicated by function to |Zero|, an empty type.
-\begin{code}
+\begin{spec}
 Dec : Set -> Set
 Dec X = X + (X -> Zero)
-\end{code}
+\end{spec}
 Show that if a normal functor has decidable equality for its shapes,
 then its fixpoint also has decidable equality.
 %format eq? = "\F{eq?}"
