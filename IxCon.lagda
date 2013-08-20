@@ -5,6 +5,7 @@ module IxCon where
 open import Vec public
 open import Normal public
 open import STLC public
+open import Containers public
 \end{code}
 %endif
 
@@ -15,19 +16,22 @@ as it has become my preferred version, too.
 The idea is to describe functors between indexed families of sets.
 %format i> = "\D{\triangleright}"
 %format _i>_ = "\us{" i> "}"
-%format ri = "\F{ri}"
-%format _<1_$_ = _ <1 _ $ _
+%format riIx = "\F{riIx}"
+%format ShIx = "\F{ShIx}"
+%format PoIx = "\F{PoIx}"
+%format <i = "\C{\triangleleft}"
+%format _<i_$_ = _ <i _ $ _
 %format !>i = !> "_{\F{i}}"
 %format <!_!>i = <! _ !>i
 \begin{code}
 record _i>_ (I J : Set) : Set1 where
-  constructor _<1_$_
+  constructor _<i_$_
   field
-    Sh : J        -> Set
-    Po : (j : J)  -> Sh j -> Set
-    ri : (j : J)(s : Sh j)(p : Po j s) -> I
+    ShIx : J        -> Set
+    PoIx : (j : J)  -> ShIx j -> Set
+    riIx : (j : J)(s : ShIx j)(p : PoIx j s) -> I
   <!_!>i : (I -> Set) -> (J -> Set)
-  <!_!>i X j = Sg (Sh j) \ s -> (p : Po j s) -> X (ri j s p)
+  <!_!>i X j = Sg (ShIx j) \ s -> (p : PoIx j s) -> X (riIx j s p)
 open _i>_ public
 \end{code}
 An |I i> J| describes a |J|-indexed thing with places for |I|-indexed elements.
@@ -73,9 +77,10 @@ ixMap f j (s , k) = s , \ p -> f _ (k p)
 Kent Petersson and Dan Synek proposed a universal inductive family,
 amounting to the fixpoint of an indexed container
 
+%format ITree = "\D{ITree}"
 \begin{code}
-data Tree {J : Set}(C : J i> J)(j : J) : Set where
-  <$_$> : <! C !>i (Tree C) j -> Tree C j
+data ITree {J : Set}(C : J i> J)(j : J) : Set where
+  <$_$> : <! C !>i (ITree C) j -> ITree C j
 \end{code}
 
 The natural numbers are a friendly, if degenerate example.
@@ -84,12 +89,12 @@ The natural numbers are a friendly, if degenerate example.
 %format sucC = "\F{sucC}"
 \begin{code}
 NatC : One i> One
-NatC = (\ _ -> Two) <1 (\ _ -> Zero <?> One) $ _
+NatC = (\ _ -> Two) <i (\ _ -> Zero <?> One) $ _
 
-zeroC : Tree NatC <>
+zeroC : ITree NatC <>
 zeroC = <$ tt , magic $>
 
-sucC : Tree NatC <> -> Tree NatC <>
+sucC : ITree NatC <> -> ITree NatC <>
 sucC n = <$ ff , pure n $>
 \end{code}
 This is just the indexed version of the |W|-type, so the same issue with
@@ -102,7 +107,7 @@ We may also define the node structure for vectors as an instance.
 %format Vr = "\F{Vr}"
 \begin{code}
 VecC : Set -> Nat i> Nat
-VecC X = VS <1 VP $ Vr where  -- depending on the length
+VecC X = VS <i VP $ Vr where  -- depending on the length
   VS : Nat -> Set
   VS zero             = One   -- nil is unlabelled
   VS (suc n)          = X     -- cons carried an element
@@ -117,10 +122,10 @@ VecC X = VS <1 VP $ Vr where  -- depending on the length
 Let us at least confirm that we can rebuild the constructors.
 
 \begin{code}
-vnil : forall {X} -> Tree (VecC X) zero
+vnil : forall {X} -> ITree (VecC X) zero
 vnil = <$ <> , (\ ()) $>
 
-vcons :  forall {X n} -> X -> Tree (VecC X) n -> Tree (VecC X) (suc n)
+vcons :  forall {X n} -> X -> ITree (VecC X) n -> ITree (VecC X) (suc n)
 vcons x xs = <$ (x , (\ _ -> xs)) $>
 \end{code}
 
@@ -141,7 +146,7 @@ IsArr iota = Zero
 IsArr (_ ->> _) = One
 
 STLC : (Cx Ty * Ty) i> (Cx Ty * Ty)
-STLC = (vv \ G T -> (T <: G) + (Ty + IsArr T)) <1
+STLC = (vv \ G T -> (T <: G) + (Ty + IsArr T)) <i
        (\  {  (G , T) (tt , _)       -> Zero
            ;  (G , T) (ff , tt , _)  -> Two
            ;  (G , T) (ff , ff , _)  -> One
@@ -153,14 +158,14 @@ STLC = (vv \ G T -> (T <: G) + (Ty + IsArr T)) <1
            ;  (G , S ->> T) (ff , ff , p) _   -> (G :: S) , T
            })
 
-stlcV : forall {G T} -> T <: G -> Tree STLC (G , T)
+stlcV : forall {G T} -> T <: G -> ITree STLC (G , T)
 stlcV x = <$ ((tt , x) , \ ()) $>
 
 stlcA :  forall {G S T} ->
-         Tree STLC (G , S ->> T) -> Tree STLC (G , S) -> Tree STLC (G , T)
+         ITree STLC (G , S ->> T) -> ITree STLC (G , S) -> ITree STLC (G , T)
 stlcA f s = <$ (ff , (tt , _)) , (f <?> s) $>
 
-stlcL :  forall {G S T} -> Tree STLC ((G :: S) , T) -> Tree STLC (G , S ->> T)
+stlcL :  forall {G S T} -> ITree STLC ((G :: S) , T) -> ITree STLC (G , S ->> T)
 stlcL t = <$ ((ff , (ff , _)) , \ _ -> t) $>
 \end{code}
 %endif
@@ -184,7 +189,7 @@ IdIx = ?
 %if False
 \begin{code}
 IdIx : forall {I} -> I i> I
-IdIx = (\ _ -> One) <1 (\ _ _ -> One) $ \ i _ _ -> i
+IdIx = (\ _ -> One) <i (\ _ _ -> One) $ \ i _ _ -> i
 \end{code}
 %endif
 such that
@@ -198,9 +203,9 @@ CoIx C C' = ?
 %if False
 \begin{code}
 CoIx : forall {I J K} -> J i> K -> I i> J -> I i> K
-CoIx (S <1 P $ r) (S' <1 P' $ r')
+CoIx (S <i P $ r) (S' <i P' $ r')
   =    (\ k -> Sg (S k) \ s -> (p : P k s) -> S' (r k s p))
-   <1  (\ k -> vv \ s f -> Sg (P k s) \ p -> P' (r k s p) (f p))
+   <i  (\ k -> vv \ s f -> Sg (P k s) \ p -> P' (r k s p) (f p))
    $   (\ { k (s , f) (p , p') -> r' (r k s p) (f p) p'})
 \end{code}
 %endif
@@ -248,7 +253,7 @@ container has a description.
 %format ixConDesc = "\F{ixConDesc}"
 \begin{code}
 ixConDesc : forall {I J} -> I i> J -> J -> Desc I
-ixConDesc (S <1 P $ r) j = sg (S j) \ s -> pi (P j s) \ p -> var (r j s p)
+ixConDesc (S <i P $ r) j = sg (S j) \ s -> pi (P j s) \ p -> var (r j s p)
 \end{code}
 
 Meanwhile, up to isomorphism at least, we can go the other way around.
@@ -293,7 +298,7 @@ in order to compute the indexed container form of a family of descriptions.
 %format descIxCon = "\F{descIxCon}"
 \begin{code}
 descIxCon : forall {I J} -> (J -> Desc I) -> I i> J
-descIxCon F = (DSh o F) <1 (DPo o F) $ (Dri o F)
+descIxCon F = (DSh o F) <i (DPo o F) $ (Dri o F)
 \end{code}
 Exhibit the isomorphism
 \[
@@ -426,9 +431,9 @@ close indexed containers under the formation of `everywhere'.
 
 \begin{code}
 Everywhere : forall {I J}(C : I i> J)(X : I -> Set) -> Sg I X i> Sg J (<! C !>i X)
-Everywhere (S <1 P $ r) X
+Everywhere (S <i P $ r) X
   =   (\ _ -> One)
-  <1  (\ { (j , s , k) _ -> P j s })
+  <i  (\ { (j , s , k) _ -> P j s })
   $   (\ { (j , s , k) _ p -> r j s p , k p })
 \end{code}
 
@@ -453,17 +458,17 @@ Construct the transformer which takes |C| to the container for witnesses
 that a property holds for some element of a |C|-structure
 \begin{spec}
 Somewhere : forall {I J}(C : I i> J)(X : I -> Set) -> Sg I X i> Sg J (<! C !>i X)
-Somewhere (S <1 P $ r) X
+Somewhere (S <i P $ r) X
   =   ?
-  <1  ?
+  <i  ?
   $   ?
 \end{spec}
 %if False
 \begin{code}
 Somewhere : forall {I J}(C : I i> J)(X : I -> Set) -> Sg I X i> Sg J (<! C !>i X)
-Somewhere (S <1 P $ r) X
+Somewhere (S <i P $ r) X
   =   (\ { (j , s , k) -> P j s })
-  <1  (\ { (j , s , k) _ -> One })
+  <i  (\ { (j , s , k) _ -> One })
   $   (\ { (j , s , k) p _ -> r j s p , k p })
 \end{code}
 %endif
@@ -513,10 +518,10 @@ asserting that the induction predicate holds at every substructure..
 
 %format treeInd = "\F{treeInd}"
 \begin{code}
-treeInd :  forall {I}(C : I i> I)(P : Sg I (Tree C) -> Set) ->
-           (  <! Everywhere C (Tree C) !>i P -:>
+treeInd :  forall {I}(C : I i> I)(P : Sg I (ITree C) -> Set) ->
+           (  <! Everywhere C (ITree C) !>i P -:>
               (vv \ i ts -> P (i , <$ ts $>)) ) ->
-           (i : I)(t : Tree C i) -> P (i , t)
+           (i : I)(t : ITree C i) -> P (i , t)
 treeInd C P m i <$ s , k $> = m (i , s , k) (<> , \ p -> treeInd C P m _ (k p))
 \end{code}
 
@@ -524,39 +529,39 @@ The step method of the above looks a bit like an algebra, modulo plumbing.
 
 %format treeFold = "\F{treeFold}"
 \begin{exe}[induction as a fold]
-Petersson-Synek trees come with a `fold' operator, making |Tree C|
-(weakly) initial for |<! C !>i|. We can compute any |P| from a |Tree C|,
+Petersson-Synek trees come with a `fold' operator, making |ITree C|
+(weakly) initial for |<! C !>i|. We can compute any |P| from a |ITree C|,
 given a |C|-algebra for |P|.
 \begin{code}
 treeFold :  forall {I}(C : I i> I)(P : I -> Set) ->
             (<! C !>i P -:> P) ->
-            (Tree C -:> P)
+            (ITree C -:> P)
 treeFold C P m i <$ s , k $> = m i (s , \ p -> treeFold C P m _ (k p))
 \end{code}
-However, |treeFold| does not give us \emph{dependent} induction on |Tree C|.
+However, |treeFold| does not give us \emph{dependent} induction on |ITree C|.
 If al you have is a hammer, everything looks like a nail. If we want to
-compute why some |P : Sg I (Tree C) -> Set| always holds, we'll need an
+compute why some |P : Sg I (ITree C) -> Set| always holds, we'll need an
 indexed container storing |P|s in positions corresponding to the children
 of a given tree. The |Everywhere C| construct does most of the work,
-but you need a little adaptor to unwrap the |C| container inside the |Tree C|.
+but you need a little adaptor to unwrap the |C| container inside the |ITree C|.
 %format Children = "\F{Children}"
 \begin{spec}
-Children : forall {I}(C : I i> I) -> Sg I (Tree C) i> Sg I (Tree C)
-Children C = CoIx ? (Everywhere C (Tree C))
+Children : forall {I}(C : I i> I) -> Sg I (ITree C) i> Sg I (ITree C)
+Children C = CoIx ? (Everywhere C (ITree C))
 \end{spec}
 %if False
 \begin{code}
 Delta : forall {I J} -> (J -> I) -> I i> J
 Delta f = descIxCon (var o f)
 
-kids : forall {I}{C : I i> I} -> Sg I (Tree C) -> Sg I \ i -> <! C !>i (Tree C) i
+kids : forall {I}{C : I i> I} -> Sg I (ITree C) -> Sg I \ i -> <! C !>i (ITree C) i
 kids (i , <$ ts $>) = i , ts
 
-Children : forall {I}(C : I i> I) -> Sg I (Tree C) i> Sg I (Tree C)
-Children C = CoIx (Delta kids) (Everywhere C (Tree C))
+Children : forall {I}(C : I i> I) -> Sg I (ITree C) i> Sg I (ITree C)
+Children C = CoIx (Delta kids) (Everywhere C (ITree C))
 \end{code}
 %endif
-Now, you can extract a general induction principle for |Tree C| from
+Now, you can extract a general induction principle for |ITree C| from
 |treeFold (Children C)|, but you will need a little construction. Finish the
 job.
 %format treeFoldInd = "\F{treeFoldInd}"
@@ -568,7 +573,7 @@ treeFoldInd C P m (i , t) = treeFold (Children C) P m (i , t) ?
 \end{spec}
 %if False
 \begin{code}
-children : forall {I}(C : I i> I) i t -> Tree (Children C) (i , t)
+children : forall {I}(C : I i> I) i t -> ITree (Children C) (i , t)
 children C i <$ s , k $> = <$ _ , (vv (\ _ p -> children C _ (k p))) $>
 
 treeFoldInd :  forall {I}(C : I i> I) P ->
@@ -667,7 +672,7 @@ labelled |(tt , <>)|. Let us try the general case.
 %format MuIx = "\F{\upmu{}Ix}"
 \begin{code}
 MuIx : forall {I J} -> (I + J) i> J -> I i> J
-MuIx {I}{J} F = (Tree F' o _,_ ff) <1 (P' o _,_ ff) $ (r' o _,_ ff) where
+MuIx {I}{J} F = (ITree F' o _,_ ff) <i (P' o _,_ ff) $ (r' o _,_ ff) where
 \end{code}
 The shapes of the recursive structures are themselves trees, with unlabelled
 leaves at |I|-indexed places and |F|-nodes in |J|-indexed places. We could try
@@ -677,24 +682,24 @@ dull node structure whenever an |I| shape is requested. We may construct
 %format F' = "\F{F'}"
 \begin{code}
   F'  :   (I + J) i> (I + J)
-  F'  =   (vv (\ i -> One)     <?> Sh F)
-      <1  (vv (\ _ _ -> Zero)  <?> Po F)
-      $   (vv (\ t s ())       <?> ri F)
+  F'  =   (vv (\ i -> One)     <?> ShIx F)
+      <i  (vv (\ _ _ -> Zero)  <?> PoIx F)
+      $   (vv (\ t s ())       <?> riIx F)
 \end{code}
 and then choose to start with |(ff , j)| for the given top level |j| index.
 A position is then a path to a leaf: either we are at a leaf already, or we
 must descend further.
 %format P' = "\F{P'}"
 \begin{code}
-  P' : (x : I + J) -> Tree F' x -> Set
+  P' : (x : I + J) -> ITree F' x -> Set
   P' (tt , i)  _            = One
-  P' (ff , j)  <$ s , k $>  = Sg (Po F j s) \ p -> P' (ri F j s p) (k p)
+  P' (ff , j)  <$ s , k $>  = Sg (PoIx F j s) \ p -> P' (riIx F j s p) (k p)
 \end{code}
 Finally, we may follow each path to its indicated leaf and return the
 index which sent us there.
 %format r' = "\F{r'}"
 \begin{code}
-  r' : (x : I + J)(t : Tree F' x) -> P' x t -> I
+  r' : (x : I + J)(t : ITree F' x) -> P' x t -> I
   r' (tt , i)  _            _         = i
   r' (ff , j)  <$ s , k $>  (p , ps)  = r' _ (k p) ps
 \end{code}
@@ -777,14 +782,6 @@ something that is of no use to them. I, for one, am profoundly
 grateful to have learned vector calculus: it is exactly what you need
 to develop notions of `context' for dependent datatypes.
 
-%format ~ = "\F{ -}"
-%if False
-\begin{code}
-_~_ : (X : Set)(x : X) -> Set
-X ~ x = Sg X \ x' -> x' == x -> Zero
-\end{code}
-%endif
-
 An indexed container in |I i> J| explains |J| sorts of structure in
 terms of |I| sorts of elements, and as such, we acquire a \emph{Jacobian
 matrix} of partial derivatives, in |I i> (J * I)|. A |(j , i)| derivative
@@ -793,9 +790,9 @@ build it.
 %format Jac = "\F{\mathcal{J}}"
 \begin{code}
 Jac : forall {I J} -> I i> J -> I i> (J * I)
-Jac (S <1 P $ r)
+Jac (S <i P $ r)
   =   (\ { (j , i) -> Sg (S j) \ s -> r j s ^-1 i })
-  <1  (\ { (j , .(r j s p)) (s , from p) -> P j s ~ p })
+  <i  (\ { (j , .(r j s p)) (s , from p) -> P j s - p })
   $   (\ { (j , .(r j s p)) (s , from p) (p' , _) -> r j s p' })
 \end{code}
 The shape of an |(i , j)|-derivative must select a |j|-indexed shape
@@ -808,19 +805,20 @@ Check\nudge{Einstein's summation convention might be useful to infer the choice
 and placement of quantifiers.}
 that a decidable equality for positions is enough to define the
 `plugging in' function.
+%format plugIx = "\F{plugIx}"
 \begin{spec}
-plug :  forall {I J}(C : I i> J) ->
-        ((j : J)(s : Sh C j)(p p' : Po C j s) -> Dec (p == p')) ->
+plugIx :  forall {I J}(C : I i> J) ->
+        ((j : J)(s : ShIx C j)(p p' : PoIx C j s) -> Dec (p == p')) ->
         forall {i j X} -> <! Jac C !>i X (j , i) -> X i -> <! C !>i X j
-plug C eq? jx x = ?
+plugIx C eq? jx x = ?
 \end{spec}
 %if False
 \begin{code}
-plug :  forall {I J}(C : I i> J) ->
-        ((j : J)(s : Sh C j)(p p' : Po C j s) -> Dec (p == p')) ->
+plugIx :  forall {I J}(C : I i> J) ->
+        ((j : J)(s : ShIx C j)(p p' : PoIx C j s) -> Dec (p == p')) ->
         forall {i j X} -> <! Jac C !>i X (j , i) -> X i -> <! C !>i X j
-plug C eq? {X = X} ((s , from p) , k) x = s , help where
-  help : (p : Po C _ s) -> X (ri C _ s p)
+plugIx C eq? {X = X} ((s , from p) , k) x = s , help where
+  help : (p : PoIx C _ s) -> X (riIx C _ s p)
   help p' with eq? _ s p' p 
   help .p | tt , refl = x
   help p' | ff , np = k (p' , np)
@@ -832,8 +830,8 @@ plug C eq? {X = X} ((s , from p) , k) x = s , help where
 %format zipOut = "\F{zipOut}"
 \begin{exe}[the Zipper]
 For a given |C : I i> I|, construct the indexed container
-|Zipper C : (I * I) i> (I * I)| such that |Tree (Zipper C) (ir , ih)|
-represents a one |ih|-hole context in a |Tree C ir|, represented
+|Zipper C : (I * I) i> (I * I)| such that |ITree (Zipper C) (ir , ih)|
+represents a one |ih|-hole context in a |ITree C ir|, represented
 as a sequence of hole-to-root layers.
 \begin{spec}
 Zipper : forall {I} -> I i> I -> (I * I) i> (I * I)
@@ -844,26 +842,26 @@ Zipper C = ?
 Zipper : forall {I} -> I i> I -> (I * I) i> (I * I)
 Zipper {I} C
   =   (\ { (ir , ih) ->
-              (ir == ih) + Sg I \ ip -> <! Jac C !>i (Tree C) (ip , ih) } )
-  <1  (\ { _ (tt , _) -> Zero ; _ (ff , _) -> One })
+              (ir == ih) + Sg I \ ip -> <! Jac C !>i (ITree C) (ip , ih) } )
+  <i  (\ { _ (tt , _) -> Zero ; _ (ff , _) -> One })
   $   (\ { _ (tt , _) () ; (ir , ih) (ff , (ip , _)) _ -> (ir , ip) })
 \end{code}
 %endif
 Check that you can zipper all the way out to the root.
 \begin{spec}
 zipOut :  forall {I}(C : I i> I){ir ih} ->
-          ((i : I)(s : Sh C i)(p p' : Po C i s) -> Dec (p == p')) ->
-          Tree (Zipper C) (ir , ih) -> Tree C ih -> Tree C ir
+          ((i : I)(s : ShIx C i)(p p' : PoIx C i s) -> Dec (p == p')) ->
+          ITree (Zipper C) (ir , ih) -> ITree C ih -> ITree C ir
 zipOut C eq? cz t = ?
 \end{spec}
 %if False
 \begin{code}
 zipOut :  forall {I}(C : I i> I){ir ih} ->
-          ((i : I)(s : Sh C i)(p p' : Po C i s) -> Dec (p == p')) ->
-          Tree (Zipper C) (ir , ih) -> Tree C ih -> Tree C ir
+          ((i : I)(s : ShIx C i)(p p' : PoIx C i s) -> Dec (p == p')) ->
+          ITree (Zipper C) (ir , ih) -> ITree C ih -> ITree C ir
 zipOut C eq? <$ (tt , refl)     , _ $>   t  = t
 zipOut C eq? <$ (ff , (_ , c))  , cz $>  t
-  = zipOut C eq? (cz <>) <$ plug C eq? c t $>
+  = zipOut C eq? (cz <>) <$ plugIx C eq? c t $>
 \end{code}
 %endif
 \end{exe}
@@ -883,7 +881,7 @@ Grad D h = ?
 Grad : {I : Set} -> Desc I -> I -> Desc I
 Grad (var i) h = kD (i == h)
 Grad (sg A D) h = sg A \ a -> Grad (D a) h
-Grad (pi A D) h = sg A \ a -> Grad (D a) h *D pi (A ~ a) \ { (a' , _) -> D a' }
+Grad (pi A D) h = sg A \ a -> Grad (D a) h *D pi (A - a) \ { (a' , _) -> D a' }
 Grad (D *D E) h = sg Two ((Grad D h *D E) <?> (D *D Grad E h))
 Grad (kD A) h = kD Zero
 \end{code}
@@ -900,3 +898,258 @@ It is amusing to note that the mathematical notion of \emph{divergence},
 I have not yet found a meaning for \emph{curl}, |Grad * D|, nor am I expecting
 Maxwell's equations to pop up anytime soon. But I live in hope for light.
 
+
+\section{Apocrypha}
+
+\subsection{Roman Containers}
+
+A Roman container is given as follows
+%format Roman = "\D{Roman}"
+%format Roman.S = "\F{Roman.S}"
+%format Roman.P = "\F{Roman.P}"
+%format Roman.q = "\F{Roman.q}"
+%format Roman.r = "\F{Roman.r}"
+%format Plain = "\F{Plain}"
+%format SPqr = "\C{SPqr}"
+%format !>R = !> "_{\!\F{R}}"
+%format <!_!>R = <! _ !>R
+%format Roman.Plain = Roman "\!" . "\!" Plain
+%format Roman.<!_!>R = Roman "\!" . "\!" <!_!>R
+%format S = "\F{S}"
+%format P = "\F{P}"
+%format q = "\F{q}"
+%format r = "\F{r}"
+\begin{code}
+record Roman (I J : Set) : Set1 where
+  constructor SPqr
+  field
+    S  : Set
+    P  : S -> Set
+    q  : S -> J
+    r  : (s : S) -> P s -> I
+  Plain : Con
+  Plain = S <1 P
+  <!_!>R : (I -> Set) -> (J -> Set)
+  <!_!>R X j = Sg (Sg S \ s -> q s == j) (vv \ s _ -> (p : P s) -> X (r s p))
+Plain   = Roman.Plain
+<!_!>R  = Roman.<!_!>R
+\end{code}
+%format S = "\V{S}"
+%format P = "\V{P}"
+%format q = "\V{q}"
+%format r = "\V{r}"
+It's just a plain container, decorated by functions which attach input
+indices to positions and an output index to the shape. We can turn |Roman|
+containers into indexed containers whose meanings match on the nose.
+%format FromRoman = "\F{FromRoman}"
+%format onTheNose = "\F{onTheNose}"
+\begin{code}
+FromRoman : forall {I J} -> Roman I J -> I i> J
+FromRoman (SPqr S P q r)
+  =   (\ j -> Sg S \ s -> q s == j)
+  <i  (\ j -> P o fst)
+  $   (\ f -> r o fst)
+
+onTheNose : forall {I J}(C : Roman I J) -> <! C !>R == <! FromRoman C !>i
+onTheNose C = refl
+\end{code}
+
+Sadly, the other direction is a little more involved.
+%format ToRoman = "\F{ToRoman}"
+%format toRoman = "\F{toRoman}"
+%format fromRoman = "\F{fromRoman}"
+%format toAndFromRoman = "\F{toAndFromRoman}"
+\begin{exe}[|ToRoman|]
+Show how to construct the |Roman| container isomorphic to a given
+indexed container and exhibit the isomorphism.
+\begin{spec}
+ToRoman : forall {I J} -> I i> J -> Roman I J
+ToRoman {I}{J} (S <i P $ r) = ?
+
+toRoman    :  forall {I J}(C : I i> J) ->
+              forall {X j} -> <! C !>i X j -> <! ToRoman C !>R X j
+toRoman C xs = ?
+
+fromRoman  :  forall {I J}(C : I i> J) ->
+              forall {X j} -> <! ToRoman C !>R X j -> <! C !>i X j
+fromRoman C xs = ?
+
+toAndFromRoman :
+  forall {I J}(C : I i> J){X j}
+  ->  (forall xs ->
+         toRoman C {X}{j} (fromRoman C {X}{j} xs) == xs)
+  *   (forall xs -> fromRoman C {X}{j} (toRoman C {X}{j} xs) == xs)
+toAndFromRoman C = ?
+\end{spec}
+%if False
+\begin{code}
+ToRoman : forall {I J} -> I i> J -> Roman I J
+ToRoman {I}{J} (S <i P $ r) = SPqr (Sg J S) (vv P) fst (vv r)
+
+toRoman    :  forall {I J}(C : I i> J) ->
+              forall {X j} -> <! C !>i X j -> <! ToRoman C !>R X j
+toRoman C (s , k) = ((_ , s) , refl) , k
+
+fromRoman  :  forall {I J}(C : I i> J) ->
+              forall {X j} -> <! ToRoman C !>R X j -> <! C !>i X j
+fromRoman C (((j , s) , refl) , k) = s , k
+
+toAndFromRoman :
+  forall {I J}(C : I i> J){X j}
+  ->  (forall xs -> toRoman C {X}{j} (fromRoman C {X}{j} xs) == xs)
+  *   (forall xs -> fromRoman C {X}{j} (toRoman C {X}{j} xs) == xs)
+toAndFromRoman C = (\ { (((._ , _) , refl) , _) -> refl }) , \ _ -> refl
+\end{code}
+%endif
+\end{exe}
+
+The general purpose tree type for |Roman| containers looks a lot like
+the inductive families you find in Agda or the GADTs of Haskell.
+%format RomanData = "\D{RomanData}"
+\begin{code}
+data RomanData {I}(C : Roman I I) : I -> Set where
+  _,_ :  (s : Roman.S C) ->
+         ((p : Roman.P C s) -> RomanData C (Roman.r C s p)) ->
+         RomanData C (Roman.q C s)
+\end{code}
+I could have just taken the fixpoint of the interpretation, but I
+wanted to emphasize that the role of |Roman.q| is to specialize the
+return type of the constructor, creating the constraint which shows
+up as an explicit equation in the interpretation. The reason Roman
+containers are so called is that they invoke equality and its
+mysterious capacity for transubstantiation.
+
+The |RomanData| type looks a lot like a |W|-type, albeit festooned with
+equations. Let us show that it is exactly that.
+\begin{exe}[|Roman| containers are |W|-types]
+%format ideology = "\F{ideology}"
+%format phenomenology = "\F{phenomenology}"
+%format RomanW = "\F{RomanW}"
+%format fromRomanW = "\F{fromRomanW}"
+%format toRomanW = "\F{toRomanW}"
+Construct a function which takes plain |W|-type data for a |Roman| container
+and marks up each node with the index \emph{required} of it, using
+|Roman.r|.
+\begin{spec}
+ideology :  forall {I}(C : Roman I I) ->
+            I -> W (Plain C) -> W (Plain C *c Kc I)
+ideology C i t = ?
+\end{spec}
+%if False
+\begin{code}
+ideology :  forall {I}(C : Roman I I) ->
+            I -> W (Plain C) -> W (Plain C *c Kc I)
+ideology C i <$ s , k $>
+  = <$ (s , i) , (vv (\ p -> ideology C (Roman.r C s p) (k p)) <?> \ ()) $>
+\end{code}
+%endif
+Construct a function which takes plain |W|-type data for a |Roman| container
+and marks up each node with the index \emph{delivered} by it, using
+|Roman.q|.
+\begin{spec}
+phenomenology :  forall {I}(C : Roman I I) ->
+                 W (Plain C) -> W (Plain C *c Kc I)
+phenomenology C t = ?
+\end{spec}
+%if False
+\begin{code}
+phenomenology :  forall {I}(C : Roman I I) ->
+                 W (Plain C) -> W (Plain C *c Kc I)
+phenomenology C <$ s , k $>
+  = <$ (s , Roman.q C s) , (vv (\ p -> phenomenology C (k p)) <?> \ ()) $>
+\end{code}
+%endif
+Take the |W|-type interpretation of a |Roman| container to be
+the plain data for which the required indices are delivered.
+\begin{code}
+RomanW : forall {I} -> Roman I I -> I -> Set
+RomanW C i = Sg (W (Plain C)) \ t -> phenomenology C t == ideology C i t
+\end{code}
+Now, check that you can extract |RomanData| from |RomanW|.
+\begin{spec}
+fromRomanW : forall {I}(C : Roman I I){i} -> RomanW C i -> RomanData C i
+fromRomanW C (t , good) = ?
+\end{spec}
+%if False
+\begin{code}
+ik :  forall {I}(C : Roman I I){s i i' k k'} ->
+      _==_ {X = W (Plain C *c Kc I)} <$ (s , i) , k $> <$ (s , i') , k' $> ->
+      (i == i') * (k == k')
+ik C refl = refl , refl
+
+fromRWH : forall {I}(C : Roman I I){i}
+  (t : W (Plain C)) -> phenomenology C t == ideology C i t -> RomanData C i
+fromRWH C {i} <$ s , k $>  g
+  rewrite (i << fst (ik C g) !!= Roman.q C s <QED>)
+  = s , \ p -> fromRWH C (k p) (cong (\ f -> f (tt , p)) (snd (ik C g)))
+
+fromRomanW : forall {I}(C : Roman I I){i} -> RomanW C i -> RomanData C i
+fromRomanW C = vv fromRWH C
+\end{code}
+%endif
+
+To go the other way, it is easy to construct the plain tree, but to prove
+the constraint, you will need to establish equality of functions. Using
+%format extensionality = "\F{\orange{extensionality}}"
+\begin{code}
+postulate
+  extensionality :  forall {S : Set}{T : S -> Set}(f g : (s : S) -> T s) ->
+                    ((s : S) -> f s == g s) -> f == g
+\end{code}
+construct
+\begin{spec}
+toRomanW : forall {I}(C : Roman I I){i} -> RomanData C i -> RomanW C i
+toRomanW C t = ?
+\end{spec}
+\end{exe}
+
+
+\subsection{Reflexive-Transitive closure}
+
+This does not really belong here, but it is quite fun, and something to
+do with indexed somethings. Consider the reflexive transitive closure
+of a relation, also known as the `paths in a graph'.
+
+%format ** = "\D{{}^{\ast\!\ast}}"
+%format _** = _ **
+\begin{code}
+data _** {I : Set}(R : I * I -> Set) : I * I -> Set where
+  <>   : {i : I}      -> (R **) (i , i)
+  _,_  : {i j k : I}  -> R (i , j) -> (R **) (j , k) -> (R **) (i , k)
+infix 1 _**
+\end{code}
+
+You can construct the natural numbers as an instance.
+%format NAT = "\F{NAT}"
+%format Loop = "\F{Loop}"
+\begin{code}
+NAT : Set
+NAT = (Loop **) _ where Loop : One * One -> Set ; Loop _ = One
+\end{code}
+
+\begin{exe}[further constructions with |**|]
+Using no recursive types other than |**|, construct the following
+\begin{itemize}
+ \item ordinary lists
+ \item the $\ge$ relation
+ \item lists of numbers in decreasing order
+ \item vectors
+ \item finite sets
+ \item a set of size $n!$ for a given $n$
+ \item `everywhere' and `somewhere' for edges in paths
+\end{itemize}
+\end{exe}
+
+\begin{exe}[monadic operations]
+Implement
+%format one** = "\F{one}\!" **
+%format join** = "\F{join}\!" **
+\begin{spec}
+one** : forall {I}{R : I * I -> Set} -> R -:> (R **)
+one** r = ?
+
+join** : forall {I}{R : I * I -> Set} -> ((R **) **) -:> (R **)
+join** rss = ?
+\end{spec}
+such that the monad laws hold.
+\end{exe}

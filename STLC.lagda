@@ -389,30 +389,30 @@ normal form and immediately performs all the resulting computation (i.e., more
 substitution), returning a normal form. You will need some equipment for talking
 about individual variables.
 
-%format - = "\F{ -}"
-%format _-_ = "\us{" - "}"
+%format -x = "\F{ -\!\!\raisebox{0.01in}{$\scriptstyle{\F{x}}$}}"
+%format _-x_ = "\us{" - "}"
 %format /= = "\F{\neq}"
 %format _/=_ = "\us{" /= "}"
 \begin{exe}[thinning]
-Define the function |-| which \emph{removes} a designated entry from a context,
+Define the function |-x| which \emph{removes} a designated entry from a context,
 then implement the \emph{thinning} operator, being the renaming which maps the
 embed the smaller context back into the larger.
 \begin{spec}
-_-_ : forall (Gam : Cx Ty){tau}(x : tau <: Gam) -> Cx Ty
-Gam - x = ?
+_-x_ : forall (Gam : Cx Ty){tau}(x : tau <: Gam) -> Cx Ty
+Gam -x x = ?
 infixl 4 _-_
 
-_/=_ : forall {Gam sg}(x : sg <: Gam) -> Ren (Gam - x) Gam
+_/=_ : forall {Gam sg}(x : sg <: Gam) -> Ren (Gam -x x) Gam
 x /= y = ?
 \end{spec}
 %if False
 \begin{code}
-_-_ : forall (Gam : Cx Ty){tau}(x : tau <: Gam) -> Cx Ty
-Gam :: _  - zero  = Gam
-Gam :: sg - suc x = Gam - x :: sg
-infixl 4 _-_
+_-x_ : forall (Gam : Cx Ty){tau}(x : tau <: Gam) -> Cx Ty
+Gam :: _  -x zero  = Gam
+Gam :: sg -x suc x = Gam -x x :: sg
+infixl 4 _-x_
 
-_/=_ : forall {Gam sg}(x : sg <: Gam) -> Ren (Gam - x) Gam
+_/=_ : forall {Gam sg}(x : sg <: Gam) -> Ren (Gam -x x) Gam
 zero   /= y      = suc y
 suc x  /= zero   = zero
 suc x  /= suc y  = suc (x /= y)
@@ -427,8 +427,8 @@ This much will let us frame the problem. We have a candidate value for |x|
 which does not depend on |x|, so we should be able to eliminate |x| from any
 term by substituting out. If we try, we find this situation:
 \begin{spec}
-  <<_:=_>>_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg -> 
-                       Gam != tau -> Gam - x != tau
+  <<_:=_>>_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam -x x != sg -> 
+                       Gam != tau -> Gam -x x != tau
   << x := s >> lam t   = lam (<< suc x := ? >> t)
   << x := s >> y $ ts  = ?
 infix 2 <<_:=_>>_
@@ -444,13 +444,13 @@ is the |x| for which we
 must substitute, so we need some sort of equality test. A \emph{Boolean} equality
 test does not generate enough useful information---if |y| is |x|, we need to know
 that |ts| is a suitable spine for |s|; if |y| is not |x|, we need to know its
-representation in |Gam - x|.
+representation in |Gam -x x|.
 Hence, let us rather prove that any variable is either the one we are looking for or
 another. We may express this discriminability property as a predicate on variables.
 \begin{code}
 data Veq? {Gam sg}(x : sg <: Gam) : forall {tau} -> tau <: Gam -> Set where
   same  :                                      Veq? x x
-  diff  : forall {tau}(y : tau <: Gam - x) ->  Veq? x (x /= y)
+  diff  : forall {tau}(y : tau <: Gam -x x) ->  Veq? x (x /= y)
 \end{code}
 
 \begin{exe}[variable equality testing]
@@ -533,15 +533,15 @@ Do you think these functions are mutually structurally recursive?
 %if False
 \begin{code}
 mutual
-  <<_:=_>>_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg -> 
-                       Gam != tau -> Gam - x != tau
+  <<_:=_>>_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam -x x != sg -> 
+                       Gam != tau -> Gam -x x != tau
   << x := s >> lam t           = lam (<< suc x := renNm (_/=_ zero) s >> t)
   << x := s >> y $ ts          with veq? x y 
   << x := s >> .x        $ ts  | same         = s $$ (<< x := s >>* ts)
   << x := s >> .(x /= y) $ ts  | diff y       = y $ (<< x := s >>* ts)
 
-  <<_:=_>>*_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam - x != sg ->
-                        Gam !=* tau -> Gam - x !=* tau
+  <<_:=_>>*_ :  forall  {Gam sg tau} -> (x : sg <: Gam) -> Gam -x x != sg ->
+                        Gam !=* tau -> Gam -x x !=* tau
   << x := s >>* <>        = <>
   << x := s >>* (t , ts)  = (<< x := s >> t) , (<< x := s >>* ts)
 
