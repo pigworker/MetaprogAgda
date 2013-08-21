@@ -54,8 +54,9 @@ We are just using proof-relevant Hoare logic as the type system!
 We have given the interpretation of indexed containers as operations on
 indexed families of sets. Equip them with their functorial action for
 the following notion of morphism
+%format lmax = "\F{lmax}"
 \begin{code}
-_-:>_ : forall {I : Set} -> (I -> Set) -> (I -> Set) -> Set
+_-:>_ : forall {k l}{I : Set k} -> (I -> Set l) -> (I -> Set l) -> Set (lmax l k)
 X -:> Y = forall i -> X i -> Y i
 \end{code}
 
@@ -1153,3 +1154,131 @@ join** rss = ?
 \end{spec}
 such that the monad laws hold.
 \end{exe}
+
+
+%format Pow = "\F{Pow}"
+%format Fam = "\F{Fam}"
+\subsection{|Pow| and |Fam|}
+
+We have two ways to formulate a notion of `subset' in type theory. We can
+define a subset of |X| as a predicate in
+\[
+  |X -> Set|
+\]
+giving a proof-relevant notion of evidence that a given |X : X| belongs,
+or we can pick out some elements of |X| as the image of a function
+\[
+  |Sg Set \ I -> I -> X|
+\]
+so we have a family of |X|s indexed by some set.
+
+Are these notions the same? That turns out to be a subtle question.
+A lot turns on the \emph{size} of |X|, so we had best be formal about
+it. In general, |X| is \emph{large}.
+\begin{code}
+Pow : Set1 -> Set1
+Pow X = X -> Set
+
+Fam : Set1 -> Set1
+Fam X = Sg Set \ I -> I -> X
+\end{code}
+
+\begin{exe}[small |Pow| and |Fam|]
+Show that, given a suitable notion of propositional equality,
+|Pow o Up| and |Fam o Up| capture essentially the same notion of subset.
+%format p2f = "\F{p2f}"
+%format f2p = "\F{f2p}"
+\begin{spec}
+p2f : (Pow o Up) -:> (Fam o Up)
+p2f X P = ?
+
+f2p : (Fam o Up) -:> (Pow o Up)
+f2p X F = ?
+\end{spec}
+%if False
+\begin{code}
+p2f : (Pow o Up) -:> (Fam o Up)
+p2f X P = Sg X (P o up) , (up o fst)
+
+f2p : (Fam o Up) -:> (Pow o Up)
+f2p X (I , f) (up x) = Sg I \ i -> down (f i) == x
+\end{code}
+%endif
+\end{exe}
+
+|Fam Set| is Martin-L\"of's notion of a \emph{universe}, naming a bunch of sets
+by the elements of some indexing set. Meanwhile, the `representation type'
+method of describing types concretely in Haskell is just using |Pow Set| in
+place of |Fam Set|. It is good to get used to recognizing when concepts are
+related just by exchanging |Fam| and |Pow|.
+
+%format ROMAN = "\F{ROMAN}"
+%format HANCOCK = "\F{HANCOCK}"
+%format NOTTINGHAM = "\F{NOTTINGHAM}"
+%format HANCOCK' = "\F{HANCOCK}"
+%format NOTTINGHAM' = "\F{NOTTINGHAM}"
+Modulo currying and $\lambda$-lifting of parameters, the distinction between
+|Roman I J| and |I i> J|
+is just that the former represents indexed shapes by a |Fam| (so |Roman.q|
+reads off the shape) whilst the latter uses a |Pow| (so the shapes pertain
+to a given index). Both use |Fam|s for positions.
+\begin{code}
+ROMAN : Set -> Set -> Set1
+ROMAN I J = Sg (Fam (Up J)) \ { (S , q) -> S -> Fam (Up I) }
+
+HANCOCK : Set -> Set -> Set1
+HANCOCK I J = Sg (Pow (Up J)) \ S -> Sg J (S o up) -> Fam (Up I)
+\end{code}
+A `Nottingham' indexed container switches the positions to a |Pow|
+(see Altenkirch and Morris).
+\begin{code}
+NOTTINGHAM : Set -> Set -> Set1
+NOTTINGHAM I J = Sg (Pow (Up J)) \ S -> Sg J (S o up) -> Pow (Up I)
+\end{code}
+which amounts to a presentation of shapes and positions as predicates:
+%format NSh = "\F{NSh}"
+%format NPo = "\F{NPo}"
+\begin{spec}
+  NSh  : J -> Set
+  NPo  : (j : J) -> NSh j -> I -> Set
+\end{spec}
+
+For |HANCOCK| and |NOTTINGHAM|, we can abstract the whole construction over |J|,
+obtaining:
+\begin{code}
+HANCOCK' : Set -> Set -> Set1
+HANCOCK'     I J = J -> Fam (Fam (Up I))
+
+NOTTINGHAM' : Set -> Set -> Set1
+NOTTINGHAM'  I J = J -> Fam (Pow (Up I))
+\end{code}
+
+\begin{exe}[|HANCOCK'| to |ROMAN|]
+We have, modulo plumbing,
+\begin{spec}
+  HANCOCK  I J = J -> Fam (Fam (Up I))
+  ROMAN    I J = Fam (Up J * Fam (Up I))
+\end{spec}
+Using |Fam|-|Pow| flips and currying, find a path from one to the other.
+However, see below\ldots
+\end{exe}
+
+But just when we're getting casual about |Fam|-|Pow| flipping, think about what
+happens when the argument is a \emph{large}.
+
+\begin{exe}[fool's errand]
+Construct the large version of the |Fam|-|Pow| exchange
+\begin{spec}
+p2f : Pow -:> Fam
+p2f X P = ?
+
+f2p : Fam -:> Pow
+f2p X F = ?
+\end{spec}
+\end{exe}
+
+In our study of datatypes so far, we have been constructing
+inductively defined inhabitants of |Pow (Up I)|. Let us now perform our
+own flip and consider inductive definition in |Fam I|. What should we
+expect? Nothing much different for small |I|, of course. But for a large |I|,
+all Heaven breaks loose.
