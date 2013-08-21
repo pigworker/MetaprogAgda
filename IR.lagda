@@ -7,10 +7,11 @@ open import Normal public
 \end{code}
 %endif
 
-Recall that |Fin n| is an enumeration of |n| elements. We might consider how
-to take these enumerations as the atomic components of a dependent type system,
-closed under |\Sigma| and |\Pi| types. Finite sums and products of finite things
-are finite, so we can compute their sizes.
+Recall that |Fin n| is an enumeration of |n| elements. We might
+consider how to take these enumerations as the atomic components of a
+dependent type system, closed under $\Sigma$- and $\Pi$-types. Finite
+sums and products of finite things are finite, so we can compute their
+sizes.
 
 %format sum = "\F{sum}"
 %format prod = "\F{prod}"
@@ -61,7 +62,7 @@ mutual
 \end{code}
 
 For example, if we define the forgetful map from |Fin| back to |Nat|,
-%forget fog = "\F{fog}"
+%format fog = "\F{fog}"
 \begin{code}
 fog : forall {n} -> Fin n -> Nat
 fog zero     = zero
@@ -75,7 +76,7 @@ we can\nudge{in honour of Gauss} check that
 We have just seen our first example of
 \emph{induction-recursion}. Where an inductive definition tells us how
 to perform construction of data incrementally, induction-recursion
-tells us how to perform construction-\rmph{with-interpretation}
+tells us how to perform construction-\emph{with-interpretation}
 incrementally. Together, |(FTy , #) : Fam Nat|, with the interpretation
 just telling us sizes, so that |Fin o #| gives an unstructured representation
 of a given |FTy| type. If we wanted a structured representation, we

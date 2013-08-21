@@ -361,6 +361,7 @@ zip2 ss ts = vapp (vapp (vec _,_) ss) ts
 %endif
 \end{exe}
 
+%format Fin = "\D{Fin}"
 \begin{exe}[Finite sets and projection from vectors]
 We may define a type of finite sets, suitable for indexing into vectors, as follows:
 \begin{code}
