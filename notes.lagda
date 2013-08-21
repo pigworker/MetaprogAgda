@@ -120,6 +120,9 @@ your own dependently typed language, or maybe one day in mine.
 
 \chapter{Induction-Recursion}
 
+%include IR.lagda
+
+
 \chapter{Observational Equality}
 
 \chapter{Type Theory in Type Theory}
