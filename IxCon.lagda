@@ -1218,7 +1218,7 @@ related just by exchanging |Fam| and |Pow|.
 %format HANCOCK' = "\F{HANCOCK}"
 %format NOTTINGHAM' = "\F{NOTTINGHAM}"
 Modulo currying and $\lambda$-lifting of parameters, the distinction between
-|Roman I J| and |I i> J|
+|Roman I J| and our Hancock-style |I i> J|
 is just that the former represents indexed shapes by a |Fam| (so |Roman.q|
 reads off the shape) whilst the latter uses a |Pow| (so the shapes pertain
 to a given index). Both use |Fam|s for positions.
