@@ -104,7 +104,7 @@ subset of |Set| by choosing names for them in |FTy|. But |FTy| is small
 enough to be a |Set| itself! IR is the Incredible Ray that shrinks large
 sets to small encodings of subsets of them.
 
-Here is a standard example of induction recursion for you to try
+Here is a standard example of induction recursion for you to try.
 %format FRESHLIST = "\F{FRESHLIST}"
 %format FreshList = "\D{FreshList}"
 \begin{exe}[|FreshList|]
@@ -381,7 +381,8 @@ mutual
   data REx : {n m : Nat} -> RecM n -> RecM m -> Set1 where
     Em : REx Em Em
 
-  rfog : forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') -> <! R' !>RM -> <! R !>RM
+  rfog :  forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') ->
+          <! R' !>RM -> <! R !>RM
   rfog Em <> = <>
 \end{spec}
 describes evidence |REx R R'| that |R'| is an extension of |R|, interpreted by
@@ -412,7 +413,8 @@ mutual
             (a : (r' : <! R' !>RM) -> A r') ->
             REx R (R' :<: A :>: a)
 
-  rfog : forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') -> <! R' !>RM -> <! R !>RM
+  rfog :  forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') ->
+          <! R' !>RM -> <! R !>RM
   rfog Em <> = <>
   rfog (keep X) (r' , a) = rfog X r' , a
   rfog (keepM X) (r' , m) = rfog X r' , m
@@ -435,12 +437,13 @@ base types, dependent pairs and functions, and Petersson-Synek trees.
 That's quite a lot of |Set|, right there!
 
 %format TU = "\D{TU}"
-%format Zero' = "\C{Zero'}"
-%format One' = "\C{One'}"
-%format Two' = "\C{Two'}"
-%format Sg' = "\C{\UpSigma'}"
-%format Pi' = "\C{\UpPi'}"
-%format Tree' = "\C{Tree'}"
+%format redp = "^{\C{\bullet}}"
+%format Zero' = "\C{Zero}" redp
+%format One' = "\C{One}" redp
+%format Two' = "\C{Two}" redp
+%format Sg' = "\C{\Upsigma}" redp
+%format Pi' = "\C{\Uppi}" redp
+%format Tree' = "\C{Tree}" redp
 %format !>TU = !> "_{\!\F{TU}}"
 %format <!_!>TU = <! _ !>TU
 \begin{code}
@@ -449,18 +452,18 @@ mutual
     Zero' One' Two' : TU
     Sg' Pi' : (S : TU)(T : <! S !>TU -> TU) -> TU
     Tree' :  (I : TU)
-             (F :  <! I !>TU  -> Sg TU \ S ->
-                   <! S !>TU  -> Sg TU \ P ->
-                   <! P !>TU  -> <! I !>TU  )
+             (F :  <! I  !>TU  -> Sg TU \ S ->
+                   <! S  !>TU  -> Sg TU \ P ->
+                   <! P  !>TU  -> <! I !>TU  )
              (i : <! I !>TU) -> TU
 
   <!_!>TU : TU -> Set
-  <! Zero' !>TU        = Zero
-  <! One' !>TU         = One
-  <! Two' !>TU         = Two
-  <! Sg' S T !>TU      = Sg <! S !>TU \ s -> <! T s !>TU
-  <! Pi' S T !>TU      = (s : <! S !>TU) -> <! T s !>TU
-  <! Tree' I F i !>TU  = ITree
+  <! Zero'        !>TU  = Zero
+  <! One'         !>TU  = One
+  <! Two'         !>TU  = Two
+  <! Sg' S T      !>TU  = Sg <! S !>TU \ s -> <! T s !>TU
+  <! Pi' S T      !>TU  = (s : <! S !>TU) -> <! T s !>TU
+  <! Tree' I F i  !>TU  = ITree
     (   (\ i -> <! fst (F i) !>TU)
     <i  (\ i s -> <! fst (snd (F i) s) !>TU)
     $   (\ i s p -> snd (snd (F i) s) p)
@@ -468,11 +471,11 @@ mutual
 \end{code}
 
 The |TU| universe is not closed under a principle of inductive-recursive
-definition, so the shrinking ray has not shrunk the shrinking ray gun.
+definition, so the shrinking ray has not shrunk the shrinking raygun.
 
 \begin{exe}[|TU| examples]
 Check that you can encode natural numbers, lists and vectors in |TU|.
-For an encore, try the simply typed $\lambda$-calculus
+For an encore, try the simply typed $\lambda$-calculus.
 \end{exe}
 
 
