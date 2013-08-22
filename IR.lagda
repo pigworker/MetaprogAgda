@@ -181,6 +181,7 @@ right end. That means \emph{left}-nested record types (also known as
 
 %format RecL = "\D{RecL}"
 %format !>RL = !> "_{\!\F{RL}}"
+%format <!_!>RL = <! _ !>RL
 \begin{code}
 mutual
 
@@ -283,21 +284,26 @@ mproj <$ a $> = a
 Now, I extend the notion of record signature with a constructor for manifest
 fields. I could have chosen simply to omit these fields from the record
 structure, but instead I make them |Manifest| so that projection need not
-involve recomputation.
+involve recomputation. I also index by size, to save on measuring.
 %format RecM = "\D{RecM}"
 %format !>RM = !> "_{\!\F{RM}}"
+%format <!_!>RM = <! _ !>RM
+%format :<: = ::
+%format :>: = "\C{\ni}"
+%format _:<:_:>:_ = _ :<: _ :>: _
 \begin{code}
 mutual
 
-  data RecM : Set1 where
-    Em : RecM
-    _::_ : (R : RecM)(A : <! R !>RM -> Set) -> RecM
-    _:<:_:>:_ : (R : RecM)(A : <! R !>RM -> Set)(a : (r : <! R !>RM) -> A r) -> RecM
+  data RecM : Nat -> Set1 where
+    Em         : RecM zero
+    _::_       : {n : Nat}(R : RecM n)  (A : <! R !>RM -> Set) -> RecM (suc n)
+    _:<:_:>:_  : {n : Nat}(R : RecM n)  (A : <! R !>RM -> Set)
+                                        (a : (r : <! R !>RM) -> A r) -> RecM (suc n)
 
-  <!_!>RM : RecM -> Set
-  <! Em !>RM = One
-  <! R :: A !>RM = Sg <! R !>RM A
-  <! R :<: A :>: a !>RM = Sg <! R !>RM (Manifest o a)
+  <!_!>RM : {n : Nat} -> RecM n -> Set
+  <! Em !>RM             = One
+  <! R :: A !>RM         = Sg <! R !>RM A
+  <! R :<: A :>: a !>RM  = Sg <! R !>RM (Manifest o a)
 \end{code}
 
 \begin{exe}[projection from |RecM|]
@@ -306,31 +312,23 @@ mutual
 %format vaRM = "\F{vaRM}"
 Implement projection for |RecM|.
 \begin{spec}
-sizeRM : RecM -> Nat
-sizeRM R = ?
-
-TyRM : (R : RecM) -> Fin (sizeRM R) -> <! R !>RM -> Set
+TyRM : {n : Nat}(R : RecM n) -> Fin n -> <! R !>RM -> Set
 TyRM R i = ?
 
-vaRM : (R : RecM)(i : Fin (sizeRM R))(r : <! R !>RM) -> TyRM R i r
+vaRM : {n : Nat}(R : RecM n)(i : Fin n)(r : <! R !>RM) -> TyRM R i r
 vaRM R i = ?
 \end{spec}
 Be careful not to recompute the value of a manifest field.
 %if False
 \begin{code}
-sizeRM : RecM -> Nat
-sizeRM Em = zero
-sizeRM (R :: _) = suc (sizeRM R)
-sizeRM (R :<: _ :>: _) = suc (sizeRM R)
-
-TyRM : (R : RecM) -> Fin (sizeRM R) -> <! R !>RM -> Set
+TyRM : {n : Nat}(R : RecM n) -> Fin n -> <! R !>RM -> Set
 TyRM Em ()
 TyRM (R :: A) zero = A o fst
 TyRM (R :: A) (suc i) = TyRM R i o fst
 TyRM (R :<: A :>: _) zero = A o fst
 TyRM (R :<: A :>: _) (suc i) = TyRM R i o fst
 
-vaRM : (R : RecM)(i : Fin (sizeRM R))(r : <! R !>RM) -> TyRM R i r
+vaRM : {n : Nat}(R : RecM n)(i : Fin n)(r : <! R !>RM) -> TyRM R i r
 vaRM Em () _
 vaRM (R :: A) zero (r , a) = a
 vaRM (R :: A) (suc i) (r , a) = vaRM R i r

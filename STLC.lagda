@@ -30,7 +30,7 @@ and close under function spaces.
 %format lam = "\C{lam}"
 %format app = "\C{app}"
 %format :: = "\!\raisebox{ -0.09in}[0in][0in]{\red{\textsf{`}}\,}"
-%format _::_ = "\us{" :: "}"
+%format _::_ = _ :: _
 
 \begin{code}
 data Ty : Set where
