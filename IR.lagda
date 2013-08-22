@@ -51,6 +51,7 @@ One thing that Agda lets us do is just the thing we need. We can define
 
 \begin{code}
 mutual
+
   data FTy : Set where
     fin    : Nat -> FTy
     sg pi  : (S : FTy)(T : Fin (# S) -> FTy) -> FTy
@@ -86,6 +87,7 @@ could just as well have interpreted |FTy| in |Set|.
 %format FEl = "\F{FEl}"
 \begin{code}
 mutual
+
   data FTy' : Set where
     fin    : Nat -> FTy'
     sg pi  : (S : FTy')(T : FEl S -> FTy') -> FTy'
@@ -98,4 +100,251 @@ mutual
 
 Now, what has happened? We have |(FTy' , FEl) : Fam Set|, picking out a
 subset of |Set| by choosing names for them in |FTy|. But |FTy| is small
-enough to be a |Set| itself!
+enough to be a |Set| itself! IR is the Incredible Ray that shrinks large
+sets to small encodings of subsets of them.
+
+
+\section{Records}
+
+Randy Pollack identified the task of modelling \emph{record} types as a
+key early use of induction-recursion, motivated to organise libraries for
+mathematical structure.
+
+It doesn't take IR to have a go at modelling records, just something a
+bit like |Desc|, but just describing the right-nested |Sg|-types.
+
+%format RecR = "\D{RecR}"
+%format !>RR = !> "_{\!\F{RR}}"
+%format <!_!>RR = <! _ !>RR
+\begin{code}
+data RecR : Set1 where
+  <>   : RecR
+  _,_  : (A : Set)(R : A -> RecR) -> RecR
+
+<!_!>RR : RecR -> Set
+<! <> !>RR     = One
+<! A , R !>RR  = Sg A \ a -> <! R a !>RR
+\end{code}
+
+That gives us a very flexible, variant notion of record, where the
+values of earlier fields can determine the entire structure of the rest
+of the record. Sometimes, however, it may be too flexible: you cannot
+tell from a |RecR| description how many fields a record has---indeed, this
+quantity may vary from record to record. You can, of course, count the fields
+in an actual record, then define projection. You do it.
+
+\begin{exe}[projection from |RecR|]
+Show how to compute the size of a record, then define the projections,
+first of types, then of values.
+%format sizeRR = "\F{sizeRR}"
+%format TyRR = "\F{TyRR}"
+%format vaRR = "\F{vaRR}"
+\begin{spec}
+sizeRR : (R : RecR) -> <! R !>RR -> Nat
+sizeRR R r = ?
+
+TyRR : (R : RecR)(r : <! R !>RR) -> Fin (sizeRR R r) -> Set
+TyRR R r i = ?
+
+vaRR : (R : RecR)(r : <! R !>RR)(i : Fin (sizeRR R r)) -> TyRR R r i
+vaRR R r i = ?
+\end{spec}
+%if False
+\begin{code}
+sizeRR : (R : RecR) -> <! R !>RR -> Nat
+sizeRR <>       _        = zero
+sizeRR (A , R)  (a , r)  = suc (sizeRR (R a) r)
+
+TyRR : (R : RecR)(r : <! R !>RR) -> Fin (sizeRR R r) -> Set
+TyRR <>       _        ()
+TyRR (A , R)  (a , r)  zero     = A
+TyRR (A , R)  (a , r)  (suc i)  = TyRR (R a) r i
+
+vaRR : (R : RecR)(r : <! R !>RR)(i : Fin (sizeRR R r)) -> TyRR R r i
+vaRR <>       _        ()
+vaRR (A , R)  (a , r)  zero     = a
+vaRR (A , R)  (a , r)  (suc i)  = vaRR (R a) r i
+\end{code}
+%endif
+\end{exe}
+
+Of course, we could enforce uniformity of length by indexing.
+But a bigger problem with |RecR| is that, being right-nested, our access
+to it is left-anchored. Extending a record with more fields whose types
+depend on existing fields (e.g., adding laws to a record of operations)
+is a difficult right-end access, as is suffix-truncation.
+
+Sometimes we want to know that we are writing down a signature with a
+fixed set of fields, and we want easy extensibility at the dependent
+right end. That means \emph{left}-nested record types (also known as
+\emph{contexts}). And that's where we need IR.
+
+%format RecL = "\D{RecL}"
+%format !>RL = !> "_{\!\F{RL}}"
+\begin{code}
+mutual
+
+  data RecL : Set1 where
+    Em : RecL
+    _::_ : {n : Nat}(R : RecL)(A : <! R !>RL -> Set)  -> RecL
+
+  <!_!>RL : RecL -> Set
+  <! Em !>RL      = One
+  <! R :: A !>RL  = Sg <! R !>RL A
+\end{code}
+
+\begin{exe}[projection from |RecL|]
+%format sizeRL = "\F{sizeRL}"
+%format TyRL = "\F{TyRL}"
+%format vaRL = "\F{vaRL}"
+Show how to compute the size of a |RecL| without knowing the
+individual record. Show how to interpret a projection as a
+function from a record, first for types, then values.
+\begin{spec}
+sizeRL : RecL -> Nat
+sizeRL R = ?
+
+TyRL : (R : RecL) -> Fin (sizeRL R) -> <! R !>RL -> Set
+TyRL R i = ?
+
+vaRL : (R : RecL)(i : Fin (sizeRL R))(r : <! R !>RL) -> TyRL R i r
+vaRL R i = ?
+\end{spec}
+%if False
+\begin{code}
+sizeRL : RecL -> Nat
+sizeRL Em = zero
+sizeRL (R :: A) = suc (sizeRL R)
+
+TyRL : (R : RecL) -> Fin (sizeRL R) -> <! R !>RL -> Set
+TyRL Em ()
+TyRL (R :: A) zero = A o fst
+TyRL (R :: A) (suc i) = TyRL R i o fst
+
+vaRL : (R : RecL)(i : Fin (sizeRL R))(r : <! R !>RL) -> TyRL R i r
+vaRL Em ()
+vaRL (R :: A) zero = snd
+vaRL (R :: A) (suc i) = vaRL R i o fst
+\end{code}
+%endif
+\end{exe}
+
+\begin{exe}[truncation]
+Show how to truncate a record signature from a given field and compute the
+corresponding projection on structures.
+%format TruncRL = "\F{TruncRL}"
+%format truncRL = "\F{truncRL}"
+\begin{spec}
+TruncRL : (R : RecL) -> Fin (sizeRL R) -> RecL
+TruncRL R i = ?
+
+truncRL : (R : RecL)(i : Fin (sizeRL R)) -> <! R !>RL -> <! TruncRL R i !>RL
+truncRL R i = ?
+\end{spec}
+%if False
+\begin{code}
+TruncRL : (R : RecL) -> Fin (sizeRL R) -> RecL
+TruncRL Em ()
+TruncRL (R :: A) zero = R
+TruncRL (R :: A) (suc i) = TruncRL R i
+
+truncRL : (R : RecL)(i : Fin (sizeRL R)) -> <! R !>RL -> <! TruncRL R i !>RL
+truncRL Em ()
+truncRL (R :: A) zero = fst
+truncRL (R :: A) (suc i) = truncRL R i o fst
+\end{code}
+%endif
+\end{exe}
+
+
+\subsection{Manifest Fields}
+
+Pollack extends his notion of record with \emph{manifest fields}, i.e., fields
+whose values are computed from earlier fields. It is rather like allowing
+\emph{definitions} in contexts.
+
+First, I define the type of data with a manifest value (sometimes also known
+as \emph{singletons}). I deliberately keep the index right of the colon to
+force Agda to store the singleton value in the data structure.
+%format Manifest = "\D{Manifest}"
+\nudge{Why is |Manifest| not an Agda record?}
+\begin{code}
+data Manifest {A : Set} : A -> Set where
+  <$_$> : (a : A) -> Manifest a
+\end{code}
+
+%if False
+\begin{code}
+mproj : forall {A}{a : A} -> Manifest a -> A
+mproj <$ a $> = a
+\end{code}
+%endif
+
+Now, I extend the notion of record signature with a constructor for manifest
+fields. I could have chosen simply to omit these fields from the record
+structure, but instead I make them |Manifest| so that projection need not
+involve recomputation.
+%format RecM = "\D{RecM}"
+%format !>RM = !> "_{\!\F{RM}}"
+\begin{code}
+mutual
+
+  data RecM : Set1 where
+    Em : RecM
+    _::_ : (R : RecM)(A : <! R !>RM -> Set) -> RecM
+    _:<:_:>:_ : (R : RecM)(A : <! R !>RM -> Set)(a : (r : <! R !>RM) -> A r) -> RecM
+
+  <!_!>RM : RecM -> Set
+  <! Em !>RM = One
+  <! R :: A !>RM = Sg <! R !>RM A
+  <! R :<: A :>: a !>RM = Sg <! R !>RM (Manifest o a)
+\end{code}
+
+\begin{exe}[projection from |RecM|]
+%format sizeRM = "\F{sizeRM}"
+%format TyRM = "\F{TyRM}"
+%format vaRM = "\F{vaRM}"
+Implement projection for |RecM|.
+\begin{spec}
+sizeRM : RecM -> Nat
+sizeRM R = ?
+
+TyRM : (R : RecM) -> Fin (sizeRM R) -> <! R !>RM -> Set
+TyRM R i = ?
+
+vaRM : (R : RecM)(i : Fin (sizeRM R))(r : <! R !>RM) -> TyRM R i r
+vaRM R i = ?
+\end{spec}
+Be careful not to recompute the value of a manifest field.
+%if False
+\begin{code}
+sizeRM : RecM -> Nat
+sizeRM Em = zero
+sizeRM (R :: _) = suc (sizeRM R)
+sizeRM (R :<: _ :>: _) = suc (sizeRM R)
+
+TyRM : (R : RecM) -> Fin (sizeRM R) -> <! R !>RM -> Set
+TyRM Em ()
+TyRM (R :: A) zero = A o fst
+TyRM (R :: A) (suc i) = TyRM R i o fst
+TyRM (R :<: A :>: _) zero = A o fst
+TyRM (R :<: A :>: _) (suc i) = TyRM R i o fst
+
+vaRM : (R : RecM)(i : Fin (sizeRM R))(r : <! R !>RM) -> TyRM R i r
+vaRM Em () _
+vaRM (R :: A) zero (r , a) = a
+vaRM (R :: A) (suc i) (r , a) = vaRM R i r
+vaRM (R :<: A :>: a) zero (r , m) = mproj m
+vaRM (R :<: A :>: _) (suc i) (r , _)= vaRM R i r
+\end{code}
+%endif
+\end{exe}
+
+
+\section{A Universe Hierarchy}
+
+
+\section{Encoding Induction-Recursion}
+
+
+\section{Irish Induction-Recursion}
