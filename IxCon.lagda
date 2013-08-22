@@ -371,7 +371,7 @@ record Up {l}(X : Set l) : Set (lsuc l) where
   constructor up
   field
     down : X
-open Up
+open Up public
 \end{code}
 Now implement
 %format DescD = "\F{DescD}"

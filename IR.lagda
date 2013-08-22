@@ -4,6 +4,7 @@ module IR where
 
 open import Vec public
 open import Normal public
+open import IxCon public
 \end{code}
 %endif
 
@@ -103,6 +104,36 @@ subset of |Set| by choosing names for them in |FTy|. But |FTy| is small
 enough to be a |Set| itself! IR is the Incredible Ray that shrinks large
 sets to small encodings of subsets of them.
 
+Here is a standard example of induction recursion for you to try
+%format FRESHLIST = "\F{FRESHLIST}"
+%format FreshList = "\D{FreshList}"
+\begin{exe}[|FreshList|]
+By means of a suitable choice of recursive interpretation, fill the |?|
+with a condition which ensures that |FreshList|s have \emph{distinct}
+elements. Try to make sure that, for any concrete |FreshList|, |ok|
+can be inferred trivially.
+\begin{spec}
+module FRESHLIST (X : Set)(Xeq? : (x x' : X) -> Dec (x == x')) where
+  mutual
+    data FreshList : Set where
+      []   : FreshList
+      _,_  : (x : X)(xs : FreshList){ok : ?} -> FreshList
+\end{spec}
+%if False
+\begin{code}
+module FRESHLIST (X : Set)(Xeq? : (x x' : X) -> Dec (x == x')) where
+  mutual
+    data FreshList : Set where
+      []   : FreshList
+      _,_  : (x : X)(xs : FreshList){ok : Fresh x xs} -> FreshList
+    Fresh : X -> FreshList -> Set
+    Fresh x [] = One
+    Fresh x (x' , xs) with Xeq? x x'
+    ... | (tt , _) = Zero
+    ... | (ff , _) = Fresh x xs
+\end{code}
+%endif
+\end{exe}
 
 \section{Records}
 
@@ -339,7 +370,113 @@ vaRM (R :<: A :>: _) (suc i) (r , _)= vaRM R i r
 \end{exe}
 
 
-\section{A Universe Hierarchy}
+\begin{exe}[record extension]
+%format REx = "\D{REx}"
+%format rfog = "\F{rfog}"
+When building libraries of structures, we are often concerned with the idea
+of one record signature being the extension of another. The following
+\begin{spec}
+mutual
+
+  data REx : {n m : Nat} -> RecM n -> RecM m -> Set1 where
+    Em : REx Em Em
+
+  rfog : forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') -> <! R' !>RM -> <! R !>RM
+  rfog Em <> = <>
+\end{spec}
+describes evidence |REx R R'| that |R'| is an extension of |R|, interpreted by
+|rfog| as a map from |<! R' !>RM| back to |<! R !>RM|. Unfortunately, it captures
+only the fact that the empty record extends itself.
+Extend |REx| to allow retention of every field, insertion of new fields,
+and conversion of abstract to manifest fields.
+%if False
+\begin{code}
+mutual
+
+  data REx : {n m : Nat} -> RecM n -> RecM m -> Set1 where
+    Em : REx Em Em
+    keep :  forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') ->
+            {A : <! R !>RM -> Set} -> REx (R :: A) (R' :: (A o rfog X))
+    keepM :  forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') ->
+             {A : <! R !>RM -> Set} ->
+             {a : (r : <! R !>RM) -> A r} ->
+             REx (R :<: A :>: a) (R' :<: (A o rfog X) :>: (a o rfog X))
+    manif :  forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') ->
+             {A : <! R !>RM -> Set} ->
+             (a : (r' : <! R' !>RM) -> A (rfog X r')) ->
+             REx (R :: A) (R' :<: (A o rfog X) :>: a)
+    new :  forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') ->
+           (A : <! R' !>RM -> Set) -> REx R (R' :: A)
+    newM :  forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') ->
+            (A : <! R' !>RM -> Set) ->
+            (a : (r' : <! R' !>RM) -> A r') ->
+            REx R (R' :<: A :>: a)
+
+  rfog : forall {n m}{R : RecM n}{R' : RecM m}(X : REx R R') -> <! R' !>RM -> <! R !>RM
+  rfog Em <> = <>
+  rfog (keep X) (r' , a) = rfog X r' , a
+  rfog (keepM X) (r' , m) = rfog X r' , m
+  rfog (manif X a) (r' , m) = rfog X r' , mproj m
+  rfog (new X A) (r' , a) = rfog X r'
+  rfog (newM X A a) (r' , m) = rfog X r'
+\end{code}
+%endif
+(For my solution, I attempted to show that I could always construct
+the identity extension. Thus far, I have been defeated by equational
+reasoning in an overly intensional setting.)
+\end{exe}
+
+
+\section{A Universe}
+
+We've already seen that we can use IR to build a little internal
+universe. I have a favourite such universe, with a scattering of
+base types, dependent pairs and functions, and Petersson-Synek trees.
+That's quite a lot of |Set|, right there!
+
+%format TU = "\D{TU}"
+%format Zero' = "\C{Zero'}"
+%format One' = "\C{One'}"
+%format Two' = "\C{Two'}"
+%format Sg' = "\C{\UpSigma'}"
+%format Pi' = "\C{\UpPi'}"
+%format Tree' = "\C{Tree'}"
+%format !>TU = !> "_{\!\F{TU}}"
+%format <!_!>TU = <! _ !>TU
+\begin{code}
+mutual
+  data TU : Set where
+    Zero' One' Two' : TU
+    Sg' Pi' : (S : TU)(T : <! S !>TU -> TU) -> TU
+    Tree' :  (I : TU)
+             (F :  <! I !>TU  -> Sg TU \ S ->
+                   <! S !>TU  -> Sg TU \ P ->
+                   <! P !>TU  -> <! I !>TU  )
+             (i : <! I !>TU) -> TU
+
+  <!_!>TU : TU -> Set
+  <! Zero' !>TU        = Zero
+  <! One' !>TU         = One
+  <! Two' !>TU         = Two
+  <! Sg' S T !>TU      = Sg <! S !>TU \ s -> <! T s !>TU
+  <! Pi' S T !>TU      = (s : <! S !>TU) -> <! T s !>TU
+  <! Tree' I F i !>TU  = ITree
+    (   (\ i -> <! fst (F i) !>TU)
+    <i  (\ i s -> <! fst (snd (F i) s) !>TU)
+    $   (\ i s p -> snd (snd (F i) s) p)
+    )   i
+\end{code}
+
+The |TU| universe is not closed under a principle of inductive-recursive
+definition, so the shrinking ray has not shrunk the shrinking ray gun.
+
+\begin{exe}[|TU| examples]
+Check that you can encode natural numbers, lists and vectors in |TU|.
+For an encore, try the simply typed $\lambda$-calculus
+\end{exe}
+
+
+\section{Universe Upon Universe}
 
 
 \section{Encoding Induction-Recursion}
