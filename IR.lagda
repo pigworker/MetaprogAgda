@@ -481,6 +481,139 @@ For an encore, try the simply typed $\lambda$-calculus.
 
 \section{Universe Upon Universe}
 
+Not only can you build one small universe inside |Set| using
+induction-recursion, you can build a \emph{predicative hierarchy}
+of them. The key is to define the `next universe' operator, and then
+iterate it. The following construction takes a universe |X| and 
+builds another, |NU X|, on top.
+%format NU = "\D{NU}"
+%format U' = "\C{U}" redp
+%format El' = "\C{El}" redp
+%format Nat' = "\C{Nat}" redp
+%format !>NU = !> "_{\!\F{NU}}"
+%format <!_!>NU = <! _ !>NU
+\begin{code}
+mutual
+
+  data NU (X : Fam Set) : Set where
+    U' : NU X
+    El' : fst X -> NU X
+    Nat' : NU X
+    Pi' : (S : NU X)(T : <! S !>NU -> NU X) -> NU X
+
+  <!_!>NU : forall {X} -> NU X -> Set
+  <!_!>NU {U , El}  U'       = U
+  <!_!>NU {U , El}  (El' T)  = El T
+  <! Nat'     !>NU           = Nat
+  <! Pi' S T  !>NU           = (s : <! S !>NU) -> <! T s !>NU
+\end{code}
+As you can see, |NU X| has names |El' T| for the types in |X| and a
+name |U'| for |X| itself. Now we can jack up universes as far as we like.
+
+%format EMPTY = "\F{EMPTY}"
+%format LEVEL = "\F{LEVEL}"
+\begin{code}
+EMPTY : Fam Set
+EMPTY = Zero , \ ()
+
+LEVEL : Nat -> Fam Set
+LEVEL zero     = NU EMPTY , <!_!>NU
+LEVEL (suc n)  = NU (LEVEL n) , <!_!>NU
+\end{code}
+
+This hierarchy is explicitly cumulative: |El'| embeds types
+upward without changing their meaning. One consequence is that we have
+a redundancy of representation:
+\begin{exe}[|Nat -> Nat|]
+Find five names for |Nat -> Nat| in |fst (LEVEL 1)|.
+%if False
+\begin{code}
+infixr 4 _,_
+nat2nat : List (fst (LEVEL 1))
+nat2nat
+  =  (Pi' Nat' \ _ -> Nat')
+  ,  (Pi' (El' Nat') \ _ -> Nat')
+  ,  (Pi' Nat' \ _ -> El' Nat')
+  ,  (Pi' (El' Nat') \ _ -> El' Nat')
+  ,  El' (Pi' Nat' \ _ -> Nat')
+  ,  <>
+\end{code}
+%endif
+\end{exe}
+
+
+\subsection{A Redundancy-Free Hierarchy}
+
+We can try to eliminate the redundancy by including only the names
+for lower universes at each level: we do not need to embed |Nat -> Nat|
+from |LEVEL 0|, because |LEVEL 1| has a perfectly good version.
+This time, we parametrize the universe by a de Bruijn indexed collection
+of the previous universes.
+%format HU = "\D{HU}"
+%format HPREDS = "\F{HPREDS}"
+%format HSET = "\F{HSET}"
+%format !>HU = !> "_{\!\F{HU}}"
+%format <!_!>HU = <! _ !>HU
+\begin{code}
+mutual
+
+  data HU {n}(U : Fin n -> Set) : Set where
+    U'    : Fin n -> HU U
+    Nat'  : HU U
+    Pi'   : (S : HU U)(T : <! S !>HU -> HU U) -> HU U
+
+  <!_!>HU : forall {n}{U : Fin n -> Set} -> HU U -> Set
+  <!_!>HU {U = U} (U' i)  = U i
+  <! Nat'     !>HU        = Nat
+  <! Pi' S T  !>HU        = (s : <! S !>HU) -> <! T s !>HU
+\end{code}
+
+To finish the job, we must build the collections of levels to hand to
+|HU|. At each step, level |zero| is the new top level, built with a fresh
+appeal to |HU|, but lower levels can be projected from the previous
+collection.
+\begin{code}
+HPREDS : (n : Nat) -> Fin n -> Set
+HPREDS zero     ()
+HPREDS (suc n)  zero     = HU (HPREDS n)
+HPREDS (suc n)  (suc i)  = HPREDS n i
+
+HSET : Nat -> Set
+HSET n = HU (HPREDS n)
+\end{code}
+Note that |HSET n| is indeed |<! U' zero !>HU| at level |suc n|.
+
+The trouble with this representation, however, is that it is not
+cumulative for free. Intuitively, every type at each level has a counterpart
+at all higher levels, but how can we get our hands on it?
+
+\begin{exe}[fool's errand]
+Find out what breaks when you try to implement cumulativity.
+What equation do you need to hold? Can you prove it?
+%format Cumu = "\F{Cumu}"
+\begin{spec}
+Cumu : (n : Nat)(T : HSET n) -> HSET (suc n)
+Cumu n T = ?
+\end{spec}
+%if False
+\begin{spec}
+mutual
+  Cumu : (n : Nat)(T : HSET n) -> HSET (suc n)
+  Cumu n (U' i) = U' (suc i)
+  Cumu n Nat' = Nat'
+  Cumu n (Pi' S T)
+    = Pi' (Cumu n S) \ s -> Cumu n (T (subst (Cumuq n S) id s))
+
+  Cumuq : (n : Nat)(T : HSET n) -> <! Cumu n T !>HU == <! T !>HU
+  Cumuq n (U' i)     = refl
+  Cumuq n Nat'       = refl
+  Cumuq n (Pi' S T)  with Cumu n S | Cumuq n S
+  Cumuq n (Pi' S T)  | S' | q with <! S' !>HU 
+  Cumuq n (Pi' S T) | S' | refl | .(<! S !>HU) = {!!}
+\end{spec}
+%endif
+\end{exe}
+
 
 \section{Encoding Induction-Recursion}
 

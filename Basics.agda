@@ -30,6 +30,7 @@ record Sg {l : Level}(S : Set l)(T : S -> Set l) : Set l where
 open Sg public
 _*_ : {l : Level} -> Set l -> Set l -> Set l
 S * T = Sg S \ _ -> T
+infixr 4 _,_ _*_
 
 vv_ :  forall {k l}{S : Set k}{T : S -> Set k}{P : Sg S T -> Set l} ->
       ((s : S)(t : T s) -> P (s , t)) ->
