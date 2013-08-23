@@ -1206,6 +1206,32 @@ f2p X (I , f) (up x) = Sg I \ i -> down (f i) == x
 %endif
 \end{exe}
 
+\begin{exe}[functoriality of |Pow| and |Fam|]
+Equip |Pow| with a contravariant functorial action and |Fam| with a covariant
+functorial action.
+%format $P = "\F{\ensuremath{\scriptstyle{\$}_{P}}}"
+%format $F = "\F{\ensuremath{\scriptstyle{\$}_{F}}}"
+%format _$P_ = "\us{" $P "}"
+%format _$F_ = "\us{" $F "}"
+\begin{spec}
+_$P_ : forall {I J} -> (J -> I) -> Pow I -> Pow J
+f $P P = ?
+
+_$F_ : forall {I J} -> (I -> J) -> Fam I -> Fam J
+f $F F = ?
+\end{spec}
+%if False
+\begin{code}
+_$P_ : forall {I J} -> (J -> I) -> Pow I -> Pow J
+f $P P = P o f
+
+_$F_ : forall {I J} -> (I -> J) -> Fam I -> Fam J
+f $F (X , i) = X , (f o i)
+\end{code}
+%endif
+\end{exe}
+
+
 |Fam Set| is Martin-L\"of's notion of a \emph{universe}, naming a bunch of sets
 by the elements of some indexing set. Meanwhile, the `representation type'
 method of describing types concretely in Haskell is just using |Pow Set| in
