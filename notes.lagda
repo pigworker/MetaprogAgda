@@ -125,6 +125,9 @@ your own dependently typed language, or maybe one day in mine.
 
 \chapter{Observational Equality}
 
+%include OTT.lagda
+
+
 \chapter{Type Theory in Type Theory}
 
 \chapter{Reflections and Directions}

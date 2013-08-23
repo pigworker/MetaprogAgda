@@ -43,7 +43,7 @@ sense. Note that a \emph{syntax}-directed `tit-for-tat' approach,
 e.g. testing |f jeq \ x -> t| by testing |x !!!- f x jeq t| or |p jeq
 (s , t)| by |fst p jeq s| and |snd p = t|, works fine because two
 non-canonical functions and pairs are equal if and only if their
-expansions are. But if you want the $eta$-rule for |One|, you need a
+expansions are. But if you want the $\eta$-rule for |One|, you need a
 cue to notice that |u jeq v| when both inhabit |One| and neither is |<>|.
 
 It is always tempting (hence, dangerous) to try to extract more work
@@ -103,7 +103,7 @@ We may register equality with Agda, via the following pragmas,
 \end{verbatim}
 and thus gain access to Agda's support for equational reasoning.
 
-%format "MonoidOK" = "\D{MonoidOK}"
+%format MonoidOK = "\D{MonoidOK}"
 %format absorbL = "\F{absorbL}"
 %format absorbR = "\F{absorbR}"
 %format assoc = "\F{assoc}"
