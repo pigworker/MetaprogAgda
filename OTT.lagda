@@ -241,5 +241,216 @@ postulate
 
 coe X Y Q x = ?
 \end{spec}
+%if False
+\begin{code}
+coe : (X Y : TU) -> <! X <-> Y !>TU -> <! X !>TU -> <! Y !>TU
+
+postulate
+  coh : (X Y : TU)(Q : <! X <-> Y !>TU)(x : <! X !>TU) -> <! Eq X x Y (coe X Y Q x) !>TU
+
+coe Zero' Zero' <> x = x
+coe Zero' One' () x
+coe Zero' Two' () x
+coe Zero' (Sg' Y T) () x
+coe Zero' (Pi' Y T) () x
+coe Zero' (Tree' Y F i) () x
+coe One' Zero' () x
+coe One' One' <> x = x
+coe One' Two' () x
+coe One' (Sg' Y T) () x
+coe One' (Pi' Y T) () x
+coe One' (Tree' Y F i) () x
+coe Two' Zero' () x
+coe Two' One' () x
+coe Two' Two' <> x = x
+coe Two' (Sg' Y T) () x
+coe Two' (Pi' Y T) () x
+coe Two' (Tree' Y F i) () x
+coe (Sg' X T) Zero' () x
+coe (Sg' X T) One' () x
+coe (Sg' X T) Two' () x
+coe (Sg' S T) (Sg' S' T') (SQ , TQ) (s , t) =
+  let  s' = coe S S' SQ s  ; sq = coh S S' SQ s
+  in   s' , coe (T s) (T' s') (TQ s s' sq) t
+coe (Sg' X T) (Pi' Y T₁) () x
+coe (Sg' X T) (Tree' Y F i) () x
+coe (Pi' X T) Zero' () x
+coe (Pi' X T) One' () x
+coe (Pi' X T) Two' () x
+coe (Pi' X T) (Sg' Y T₁) () x
+coe (Pi' S T) (Pi' S' T') (SQ , TQ) f = \ s' ->
+  let  s = coe S' S SQ s' ; sq = coh S' S SQ s'
+  in   coe (T s) (T' s') (TQ s' s sq) (f s)
+coe (Pi' X T) (Tree' Y F i) () x
+coe (Tree' X F i) Zero' () x
+coe (Tree' X F i) One' () x
+coe (Tree' X F i) Two' () x
+coe (Tree' X F i) (Sg' Y T) () x
+coe (Tree' X F i) (Pi' Y T) () x
+coe (Tree' I F i) (Tree' I' F' i') (IQ , iq , FQ) x = tcoe i i' iq x where
+  tcoe : (i : <! I !>TU)(i' : <! I' !>TU)(iq : <! Eq I i I' i' !>TU) ->
+         <! Tree' I F i !>TU -> <! Tree' I' F' i' !>TU
+  tcoe i i' iq <$ s , k $> = <$ (
+    let  (S , K) = F i ; (S' , K') = F' i'
+         (SQ , KQ) = FQ i i' iq
+         s' = coe S S' SQ s ; sq = coh S S' SQ s
+         (P , r) = K s ; (P' , r') = K' s'
+         (PQ , rq) = KQ s s' sq
+    in   s' , \ p' ->
+         let  p = coe P' P PQ p' ; pq = coh P' P PQ p'
+         in   tcoe (r p) (r' p') (rq p' p pq) (k p) ) $>
+\end{code}
+%endif
 \end{exe}
+
+If you look at the definition of |EQ| quite carefully, you will notice
+that we did not use all of the types in |TU| to express
+equations. There is never any choice about how to be equal, so we need
+never use |Two'|; meanwhile, we can avoid expressing tree equality as
+itself a tree just by using structural recursion. As a result, the
+only constructor pattern matching |coe| need ever perform on
+\emph{proofs} is on pairs, which is just sugar for the lazy use of
+projections. Correspondingly, the only way coercion of canonical
+values between canonical types can get stuck is if those types are
+conspicuously different. Although we postulated |coh|erence, no
+computation which relies on it is strict in equality proofs, so it is
+no source of blockage.
+
+The only way a closed |coercion| can get stuck is if we can prove a
+false equation. The machinery works provided the theory is consistent,
+but we can prove no equations which do not also hold in extensional
+type theories which are known to be consistent. In general, we are free
+to assert consistent equations. Let us have
+%format reflTU = "\F{\orange{refl}_{\F{TU}}}"
+\begin{code}
+postulate
+  reflTU : (X : TU)(x : <! X !>TU) -> <! Eq X x X x !>TU
+\end{code}
+
+\begin{exe}[explore failing to prove |reflTU|]
+Try proving
+\begin{spec}
+reflTU : (X : TU)(x : <! X !>TU) -> <! Eq X x X x !>TU
+reflTU X x = ?
+\end{spec}
+Where do you get stuck?
+\end{exe}
+
+Homogeneous equations between values are made useful just by asserting
+that predicates respect them. We recover the Leibniz property.
+%format RespTU = "\F{\orange{Resp}_{\F{TU}}}"
+%format substTU = "\F{subst}_{\F{TU}}"
+\begin{code}
+postulate
+  RespTU :  (X : TU)(P : <! X !>TU -> TU)
+            (x x' : <! X !>TU) -> <! Eq X x X x' !>TU -> <! P x <-> P x' !>TU
+
+substTU : (X : TU)(P : <! X !>TU -> TU)
+          (x x' : <! X !>TU) -> <! Eq X x X x' !>TU -> <! P x !>TU -> <! P x' !>TU
+substTU X P x x' q = coe (P x) (P x') (Resp X P x x' q)
+\end{code}
+
+It is clearly desirable to construct a model in which these postulated
+constructs are given computational force, not least because such a model
+would yield a more direct proof of consistency. However, we have done
+enough to gain a propositional equality which is extensional for functions,
+equipped with a mechanism for obtaining canonical forms in `data' computation.
+
+
+
+\section{A Universe with Propositions}
+
+%format Sort = "\D{Sort}"
+%format PU = "\D{Set}"
+%format set = "\C{set}"
+%format prop = "\C{prop}"
+%format IsSet = "\F{IsSet}"
+%format !>PU = !> "_{\F{PU}}"
+%format <!_!>PU = <! _ !>PU
+%format Prf' = "\C{Prf}" redp
+
+We can express the observation that all of our proofs belong to lazy
+types by splitting our universe into two |Sort|s, corresponding to
+|set|s and |prop|ositions, embedding the latter explicitly into the former
+with a new set-former, |Prf'|.
+\begin{code}
+data Sort : Set where set prop : Sort
+
+IsSet : Sort -> Set
+IsSet set   = One
+IsSet prop  = Zero
+
+mutual
+  data PU (u : Sort) : Set where
+    Zero' One' : PU u
+    Two'   :  {_ : IsSet u} -> PU u
+    Sg'    :  (S : PU u)(T : <! S !>PU -> PU u) -> PU u
+    Pi'    :  (S : PU set)(T : <! S !>PU -> PU u) -> PU u
+    Tree'  :  {_ : IsSet u}
+              (I : PU set)
+              (F :  <! I  !>PU  -> Sg (PU set) \ S ->
+                    <! S  !>PU  -> Sg (PU set) \ P ->
+                    <! P  !>PU  -> <! I !>PU  )
+              (i : <! I !>PU) -> PU u
+    Prf'   :  {_ : IsSet u} -> PU prop -> PU u
+
+  <!_!>PU : forall {u} -> PU u -> Set
+  <! Zero'        !>PU  = Zero
+  <! One'         !>PU  = One
+  <! Two'         !>PU  = Two
+  <! Sg' S T      !>PU  = Sg <! S !>PU \ s -> <! T s !>PU
+  <! Pi' S T      !>PU  = (s : <! S !>PU) -> <! T s !>PU
+  <! Tree' I F i  !>PU  = ITree
+    (   (\ i -> <! fst (F i) !>PU)
+    <i  (\ i s -> <! fst (snd (F i) s) !>PU)
+    $   (\ i s p -> snd (snd (F i) s) p)
+    )   i
+  <! Prf' P       !>PU  = <! P !>PU
+\end{code}
+Note that |Two'| and |Tree'| are excluded from |PU prop| and that sort is always
+\emph{preserved} in covariant positions and |set| in contravariant
+positions. The interpretation of types is just as before. One could
+allow the formation of \emph{inductive predicates}, being |Tree'| structures
+with propositional node shapes, but we should then be careful not to
+pattern match on proofs when working with data in |set|s. I have chosen to avoid
+the risk, allowing only propositions whose eliminators are in any case lazy.
+
+%format /\ = "\F{\wedge}"
+%format _/\_ = "\us{" /\ "}"
+%format => = "\F{\Rightarrow}"
+%format _=>_ = "\us{" => "}"
+%format <=> = "\F{\Leftrightarrow}"
+%format _<=>_ = "\us{" <=> "}"
+%format PEQ = "\F{PEQ}"
+%format PEq = "\F{PEq}"
+
+\begin{exe}[observational propositional equality]
+Reconstruct the definition of observational equality in this more refined
+setting. Take equality of propositions to be mutual implication and
+equality of proofs to be trivial: after all, equality for proofs of the
+atomic |Zero'| and |One'| propositions are trivial.
+
+\begin{spec}
+_/\_ : PU prop -> PU prop -> PU prop
+P /\ Q = Sg' P \ _ -> Q
+
+_=>_ : PU prop -> PU prop -> PU prop
+P => Q = Pi' (Prf' P) \ _ -> Q
+
+mutual
+
+  PEQ : (X Y : PU set) -> PU prop * (<! X !>PU -> <! Y !>PU -> PU prop)
+
+  _<=>_ : PU set -> PU set -> PU prop
+  X <=> Y = fst (PEQ X Y)
+
+  PEq : (X : PU set)(x : <! X !>PU) -> (Y : PU set)(y : <! Y !>PU) -> PU prop
+  PEq X x Y y = snd (PEQ X Y) x y
+
+  PEQ  (Prf' P) (Prf' Q) = ((P => Q) /\ (Q => P)) , \ _ _ -> One'
+  -- \orange{more code goes here}
+  PEQ  _ _ = Zero' , \ _ _ -> One'
+\end{spec}
+\end{exe}
+
 
