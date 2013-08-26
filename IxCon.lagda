@@ -588,8 +588,8 @@ hole. Induction really does amount to more than weak initiality. But one last
 induction will serve for all.
 \end{exe}
 
-What goes for containers goes for descriptions. We can biuld all the equipment of
-this section for |Desc| and |Data|, too.
+What goes for containers goes for descriptions. We can build all the
+equipment of this section for |Desc| and |Data|, too.
 
 \begin{exe}[|Everywhere| and |Somewhere| for |Desc|]
 Define suitable description transformers, capturing what it means for a predicate to hold in every or some element position within a given described structure.
