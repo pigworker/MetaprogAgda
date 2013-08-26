@@ -131,7 +131,7 @@ Give a construction for the |TU| universe as a description-decoder pair in
 We should check that Irish IR allows at least as much as
 Dybjer-Setzer.
 
-\begin{exe}
+\begin{exe}[Irish-to-Swedish]
 Show how to define
 %format DSIF = "\F{DSIF}"
 \begin{spec}
