@@ -130,6 +130,9 @@ your own dependently typed language, or maybe one day in mine.
 
 \chapter{Type Theory in Type Theory}
 
+%include TTinTT.lagda
+
+
 \chapter{Reflections and Directions}
 
 \bibliographystyle{plainnat}

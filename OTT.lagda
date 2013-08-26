@@ -347,7 +347,7 @@ postulate
 
 substTU : (X : TU)(P : <! X !>TU -> TU)
           (x x' : <! X !>TU) -> <! Eq X x X x' !>TU -> <! P x !>TU -> <! P x' !>TU
-substTU X P x x' q = coe (P x) (P x') (Resp X P x x' q)
+substTU X P x x' q = coe (P x) (P x') (RespTU X P x x' q)
 \end{code}
 
 It is clearly desirable to construct a model in which these postulated
