@@ -60,6 +60,7 @@ _-:>_ : forall {k l}{I : Set k} -> (I -> Set l) -> (I -> Set l) -> Set (lmax l k
 X -:> Y = forall i -> X i -> Y i
 \end{code}
 
+%format ixMap = "\F{ixMap}"
 \begin{spec}
 ixMap : forall {I J}{C : I i> J}{X Y} -> (X -:> Y) -> <! C !>i X -:> <! C !>i Y
 ixMap f j xs = ?
@@ -121,7 +122,8 @@ VecC X = VS <i VP $ Vr where  -- depending on the length
 \end{code}
 
 Let us at least confirm that we can rebuild the constructors.
-
+%format vnil = "\F{vnil}"
+%format vcons = "\F{vcons}"
 \begin{code}
 vnil : forall {X} -> ITree (VecC X) zero
 vnil = <$ <> , (\ ()) $>
@@ -394,7 +396,7 @@ DescD {l} I _ = sg DescT (\
 \end{code}
 %endif
 Check that you can map your described descriptions back to descriptions.
-%format desc = "\D{desc}"
+%format desc = "\F{desc}"
 \begin{spec}
 desc : forall {l}{I : Set l} -> Data (DescD I) <> -> Desc I
 desc D = ?
