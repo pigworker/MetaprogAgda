@@ -210,7 +210,7 @@ following exercise.
 \begin{exe}[composition for |DS|]
 This is an open problem. Construct
 \begin{spec}
-coDS : forall {I J K} -> DS J K -> DS I K -> DS I K
+coDS : forall {I J K} -> DS J K -> DS I J -> DS I K
 coDS E D = ?
 \end{spec}
 such that

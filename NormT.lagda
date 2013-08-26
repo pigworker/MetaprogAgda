@@ -131,7 +131,7 @@ observe the corresponding naturality. We thus need a notion of
 %format -:> = "\F{\dot{\to}}"
 %format _-:>_ = "\us{" -:> "}"
 %format AppHom = "\D{AppHom}"
-%format respPure = "\F{resp}" pure
+%format respPure = "\F{respPure}"
 %format respApp = "\F{resp}" <*>
 \begin{code}
 _-:>_ : forall (F G : Set -> Set) -> Set1

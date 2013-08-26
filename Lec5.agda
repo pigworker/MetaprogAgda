@@ -25,9 +25,15 @@ sum   (suc n)  f  = f zero +Nat sum n (f o suc)
 prod  zero     _  = 1
 prod  (suc n)  f  = f zero *Nat sum n (f o suc)
 
-data FTy : Set where
-  fin    : Nat -> FTy
-  sg pi  : (S : FTy)(T : Fin {!!} -> FTy) -> FTy
+mutual
+  data FTy : Set where
+    fin    : Nat -> FTy
+    sg pi  : (S : FTy)(T : # S -> FTy) -> FTy
+
+  # : FTy -> Set
+  # (fin n) = Fin n
+  # (sg S T) = Sg (# S) (\ s -> # (T s))
+  # (pi S T) = (s : # S) -> # (T s)
 
   -- do it with Nat, #, then  tweak it to Set
 
@@ -51,11 +57,13 @@ mutual
 
   data RecL : Set1 where
     Em : RecL
-    _::_ : {n : Nat}(R : RecL)(A : <! R !>RL -> Set)  -> RecL
+    _::_ : (R : RecL)(A : <! R !>RL -> Set)  -> RecL
 
   <!_!>RL : RecL -> Set
   <! Em !>RL      = One
   <! R :: A !>RL  = Sg <! R !>RL A
+
+
 
 -- mention manifest fields
 
@@ -78,11 +86,19 @@ mutual
 
 data DS (I J : Set1) : Set1 where
   io  : J -> DS I J                                   -- no more fields
+  sg  : (A : Set)(T : A -> DS I J) -> DS I J          -- non-rec field
+  de  : (H : Set)(T : (H -> I) -> DS I J) -> DS I J
 
 <!_!>DS : forall {I J} -> DS I J -> Fam I -> Fam J
 <! io j    !>DS  Xxi
   =  One
   ,  \ { <>        -> j }
+<! sg A T  !>DS  Xxi
+  = (Sg A \ a -> fst (<! T a !>DS Xxi))
+  , (\ { (a , t) -> snd (<! T a !>DS Xxi) t })
+<! de H T !>DS (X , xi)
+  = (Sg (H -> X) \ hx -> fst (<! T (xi o hx) !>DS (X , xi)))
+  , (\ { (hx , t) -> snd (<! T (xi o hx) !>DS (X , xi)) t })
 
 mutual  -- fails positivity check and termination check
 
@@ -94,10 +110,8 @@ mutual  -- fails positivity check and termination check
 
 -- mention bind
 
-{-
-coDS : forall {I J K} -> DS J K -> DS I K -> DS I K
+coDS : forall {I J K} -> DS J K -> DS I J -> DS I K
 coDS E D = {!!}
--}
 
 {-
 PiF :  (S : Set){J : S -> Set1}(T : (s : S) -> Fam (J s)) ->

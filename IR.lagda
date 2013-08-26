@@ -217,8 +217,8 @@ right end. That means \emph{left}-nested record types (also known as
 mutual
 
   data RecL : Set1 where
-    Em : RecL
-    _::_ : {n : Nat}(R : RecL)(A : <! R !>RL -> Set)  -> RecL
+    Em    : RecL
+    _::_  : (R : RecL)(A : <! R !>RL -> Set)  -> RecL
 
   <!_!>RL : RecL -> Set
   <! Em !>RL      = One
