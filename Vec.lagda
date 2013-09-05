@@ -220,7 +220,7 @@ zip1 ss ts = (HOLE (ss [C-c C-c]) 0)
 \end{spec}
 
 Agda responds by editing our source code, replacing the single line of
-defintion by two more specific cases.
+definition by two more specific cases.
 
 \begin{spec}
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
