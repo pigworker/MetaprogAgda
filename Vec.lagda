@@ -385,7 +385,7 @@ proj (x , xs) (suc i) = proj xs i
 \end{code}
 %endif
 
-Implement, tabulation, the inverse of projection.
+Implement tabulation, the inverse of projection.
 %format tabulate = "\F{tabulate}"
 \begin{spec}
 tabulate : forall {n X} -> (Fin n -> X) -> Vec X n
