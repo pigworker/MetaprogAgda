@@ -124,7 +124,7 @@ over the notion of value.
 
 Finally, define the meaning of terms.
 %format !>t = !> "_{" !- "}"
-%format <!_!>t = <! "\!" _ "\!" !>V
+%format <!_!>t = <! "\!" _ "\!" !>t
 \begin{code}
 <!_!>t : forall {Gam tau} -> Gam !- tau -> <! Gam !>C <!_!>T -> <! tau !>T
 <! var i !>t    gam = <! i !>V gam
