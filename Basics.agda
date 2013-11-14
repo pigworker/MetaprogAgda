@@ -82,3 +82,4 @@ magic ()
 
 Dec : Set -> Set
 Dec X = X + (X -> Zero)
+
