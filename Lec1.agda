@@ -11,11 +11,7 @@ data List (X : Set) : Set where
 infixr 4 _,_
 
 zip0 : {S T : Set} -> List S -> List T -> List (S * T)
-zip0 <> <> = <>
-zip0 <> (x , ts) = <>
-zip0 (x , ss) <> = <>
-zip0 (s , ss) (t , ts) = (s , t) , zip0 ss ts
-
+zip0 xs ys = {!!}
 
 data Nat : Set where
   zero  :         Nat
@@ -26,19 +22,14 @@ data Nat : Set where
 {-# BUILTIN SUC suc #-}
 
 length : {X : Set} -> List X -> Nat
-length <>        = zero
-length (x , xs)  = suc (length xs)
+length xs = {!!}
 
 -- what is the type of the zip we want?
 {-
 zip' : {S T : Set}(ss : List S)(ts : List T) ->
        length ss == length ts ->
        Sg (List (S * T)) \ sts -> length sts == length ss
-zip' <> <> q = <> , refl
-zip' <> (x , ts) ()
-zip' (x , ss) <> ()
-zip' (s , ss) (t , ts) q with zip' ss ts {!!}
-zip' (s , ss) (t , ts) q | sts , q' = ((s , t) , sts) , {!!}
+zip' ss ts q = ?
 -}
 
 -- vectors
@@ -48,16 +39,13 @@ data Vec (X : Set) : Nat -> Set where
   _,_  : {n : Nat} -> X -> Vec X n ->  Vec X (suc n)
 
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip1 <> <> = <>
-zip1 (x , ss) (x₁ , ts) = (x , x₁) , zip1 ss ts
+zip1 ss ts = {!!}
 
 vec : forall {n X} -> X -> Vec X n
-vec {zero} x = <>
-vec {suc n} x = x , vec x
+vec {n} x = {!!}
 
 vapp :  forall {n S T} -> Vec (S -> T) n -> Vec S n -> Vec T n
-vapp <> <> = <>
-vapp (f , fs) (s , ss) = f s , vapp fs ss
+vapp fs ss = {!!}
 
 {-
 zip2 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
@@ -81,9 +69,9 @@ record Applicative (F : Set -> Set) : Set1 where
 open Applicative {{...}} public
 
 applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
-applicativeVec  = record { pure = vec; _<*>_ = vapp }
+applicativeVec  = {!!}
 endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
-endoFunctorVec  = applicativeEndoFunctor
+endoFunctorVec  = {!!}
 
 applicativeFun : forall {S} -> Applicative \ X -> S -> X
 applicativeFun = record
@@ -120,12 +108,11 @@ traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
 traversableVec = record { traverse = vtr } where
   vtr :  forall {n G S T}{{_ : Applicative G}} ->
          (S -> G T) -> Vec S n -> G (Vec T n)
-  vtr {{aG}} f <>        = pure {{aG}} <>
-  vtr {{aG}} f (s , ss)  = pure {{aG}} _,_ <*> f s <*> vtr f ss
+  vtr f ss = {!!}
 
 crush :  forall {F X Y}{{TF : Traversable F}}{{M : Monoid Y}} ->
          (X -> Y) -> F X -> Y
-crush {{M = M}} =
+crush {{M = M}} = 
   traverse {T = One}{{AG = monoidApplicative {{M}}}}  -- |T| arbitrary
 
 
@@ -140,19 +127,19 @@ open Normal public
 infixr 0 _/_
 
 VecN : Nat -> Normal
-VecN n = One / \ _ -> n
+VecN n = {!!}
 
 ListN : Normal
-ListN = Nat / id
+ListN = {!!}
 
 
 -- Normal Functor Kit
 
 K : Set -> Normal
-K A = A / (\ a -> 0)
+K A = {!!}
 
 I : Normal
-I = One / (\ _ -> 1)
+I = {!!}
 
 _+Nat_ : Nat -> Nat -> Nat
 x +Nat y = {!!}
