@@ -15,53 +15,53 @@ infixr 1 _<1_
 
 
 Kc : Set -> Con
-Kc A = ?
+Kc A = {!!}
 
 Ic : Con
-Ic = ?
+Ic = {!!}
 
 _+c_ : Con -> Con -> Con
-(S <1 P) +c (S' <1 P') = ?
+(S <1 P) +c (S' <1 P') = {!!}
 
 _*c_ : Con -> Con -> Con
-(S <1 P) *c (S' <1 P') = ?
+(S <1 P) *c (S' <1 P') = {!!}
 
 Sgc : (A : Set)(C : A -> Con) -> Con
-Sgc A C = ?
+Sgc A C = {!!}
 
 Pic : (A : Set)(C : A -> Con) -> Con
-Pic A C = ?
+Pic A C = {!!}
 
 _oc_ : Con -> Con -> Con
-(S <1 P) oc C = ?
+(S <1 P) oc C = {!!}
 
 _-c>_ : Con -> Con -> Set
-(S <1 P) -c> (S' <1 P') = ?
+(S <1 P) -c> (S' <1 P') = {!!}
 
 
 _/c_ : forall {C C'} -> C -c> C' -> forall {X} -> <! C !>c X -> <! C' !>c X
-m /c (s , k) = ?
+m /c (s , k) = {!!}
 
 data W (C : Con) : Set where
   <$_$> : <! C !>c (W C) -> W C
 
 BT : Con
-BT = ?
+BT = {!!}
 
 leaf : W BT
-leaf = ?
+leaf = {!!}
 
 node : W BT -> W BT -> W BT
-node s t = ?
+node s t = {!!}
 
 _^*_ : Con -> Set -> Set
-C ^* X = ?
+C ^* X = {!!}
 
 _-_ : (X : Set)(x : X) -> Set
 X - x = Sg X \ x' -> x' == x -> Zero
 
 der : Con -> Con
-der (S <1 P) = ?
+der (S <1 P) = {!!}
 
 BTZ : Set
 BTZ = List (<! der BT !>c (W BT)) * W BT
