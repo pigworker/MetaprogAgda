@@ -10,8 +10,13 @@ data List (X : Set) : Set where
 
 infixr 4 _,_
 
+{-
 zip0 : {S T : Set} -> List S -> List T -> List (S * T)
-zip0 xs ys = {!!}
+zip0 <> <> = <>
+zip0 <> (y , ys) = {!!}
+zip0 (x , xs) <> = {!!}
+zip0 (x , xs) (y , ys) = (x , y) , zip0 xs ys
+-}
 
 data Nat : Set where
   zero  :         Nat
@@ -22,15 +27,22 @@ data Nat : Set where
 {-# BUILTIN SUC suc #-}
 
 length : {X : Set} -> List X -> Nat
-length xs = {!!}
+length <> = zero
+length (x , xs) = suc (length xs)
 
 -- what is the type of the zip we want?
+
 {-
 zip' : {S T : Set}(ss : List S)(ts : List T) ->
        length ss == length ts ->
        Sg (List (S * T)) \ sts -> length sts == length ss
-zip' ss ts q = ?
+zip' <> <> refl = <> , refl
+zip' <> (t , ts) ()
+zip' (s , ss) <> ()
+zip' (s , ss) (t , ts) q with zip' ss ts {!!}
+zip' (s , ss) (t , ts) q | us , q' = ((s , t) , us) , {!!}
 -}
+
 
 -- vectors
 
@@ -38,19 +50,21 @@ data Vec (X : Set) : Nat -> Set where
   <>   :                               Vec X zero
   _,_  : {n : Nat} -> X -> Vec X n ->  Vec X (suc n)
 
-zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip1 ss ts = {!!}
+zip1 : {n : Nat}{S T : _} -> Vec S n -> Vec T n -> Vec (S * T) n
+zip1 <> <> = <>
+zip1 (s , ss) (t , ts) = (s , t) , zip1 ss ts
 
 vec : forall {n X} -> X -> Vec X n
-vec {n} x = {!!}
+vec {zero} x = <>
+vec {suc n} x = x , vec x
 
 vapp :  forall {n S T} -> Vec (S -> T) n -> Vec S n -> Vec T n
-vapp fs ss = {!!}
+vapp <> <> = <>
+vapp (f , fs) (s , ss) = f s , vapp fs ss
 
-{-
 zip2 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
-zip2 ss ts = {!!}
--}
+zip2 ss ts = vapp (vapp (vec _,_) ss) ts
+
 
 -- applicative and traversable structure
 
@@ -69,9 +83,9 @@ record Applicative (F : Set -> Set) : Set1 where
 open Applicative {{...}} public
 
 applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
-applicativeVec  = {!!}
+applicativeVec  = record { pure = vec; _<*>_ = vapp }
 endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
-endoFunctorVec  = {!!}
+endoFunctorVec  = applicativeEndoFunctor
 
 applicativeFun : forall {S} -> Applicative \ X -> S -> X
 applicativeFun = record
@@ -81,7 +95,7 @@ applicativeFun = record
 
 
 applicativeId : Applicative id
-applicativeId = {!!}
+applicativeId = record { pure = id; _<*>_ = id }
 
 applicativeComp : forall {F G} ->
   Applicative F -> Applicative G -> Applicative (F o G)
@@ -104,11 +118,18 @@ record Traversable (F : Set -> Set) : Set1 where
   traversableEndoFunctor = record { map = traverse }
 open Traversable {{...}} public
 
+Id : (X : Set) -> X -> X
+Id X x = x
+
 traversableVec : {n : Nat} -> Traversable \ X -> Vec X n
 traversableVec = record { traverse = vtr } where
   vtr :  forall {n G S T}{{_ : Applicative G}} ->
          (S -> G T) -> Vec S n -> G (Vec T n)
-  vtr f ss = {!!}
+  vtr {{aG}} f <> = pure {{aG}} <>
+  vtr {{aG}} f (s , ss) = pure {{aG}} _,_ <*> f s <*> vtr f ss
+
+xpose : {m n : Nat}{X : Set} -> Vec (Vec X n) m ->  Vec (Vec X m) n
+xpose = traverse id
 
 crush :  forall {F X Y}{{TF : Traversable F}}{{M : Monoid Y}} ->
          (X -> Y) -> F X -> Y
@@ -127,25 +148,29 @@ open Normal public
 infixr 0 _/_
 
 VecN : Nat -> Normal
-VecN n = {!!}
+VecN n = One / \ _ -> n
 
 ListN : Normal
-ListN = {!!}
+ListN = Nat / id
 
 
 -- Normal Functor Kit
 
 K : Set -> Normal
-K A = {!!}
+K A = A / \ _ -> 0
 
 I : Normal
-I = {!!}
+I = One / \ _ -> 1
 
 _+Nat_ : Nat -> Nat -> Nat
-x +Nat y = {!!}
+zero +Nat y = y
+suc x +Nat y = suc (x +Nat y)
 
 _+N_ : Normal -> Normal -> Normal
-(ShF / szF) +N (ShG / szG) = {!!}
+(ShF / szF) +N (ShG / szG) = (ShF + ShG) / 
+  (\ { (tt , sf) -> szF sf
+     ; (ff , sg) -> szG sg
+     })
 
 _*N_ : Normal -> Normal -> Normal
 (ShF / szF) *N (ShG / szG) = (ShF * ShG) / vv (\ fs gs -> szF fs +Nat szG gs)
@@ -194,10 +219,10 @@ NatT : Set
 NatT = Tree NatN
 
 zeroN : NatT
-zeroN = <$ ({!!} , {!!}) $>
+zeroN = <$ ((tt , <>) , <>) $>
 
 sucN : NatT -> NatT
-sucN n = {!!}
+sucN n = <$ ((ff , <>) , (n , <>)) $>
 
 {-
 -- theorem-proving
