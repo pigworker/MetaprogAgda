@@ -220,7 +220,7 @@ zip1 ss ts = (HOLE (ss [C-c C-c]) 0)
 \end{spec}
 
 Agda responds by editing our source code, replacing the single line of
-defintion by two more specific cases.
+definition by two more specific cases.
 
 \begin{spec}
 zip1 : forall {n S T} -> Vec S n -> Vec T n -> Vec (S * T) n
@@ -385,7 +385,7 @@ proj (x , xs) (suc i) = proj xs i
 \end{code}
 %endif
 
-Implement, tabulation, the inverse of projection.
+Implement tabulation, the inverse of projection.
 %format tabulate = "\F{tabulate}"
 \begin{spec}
 tabulate : forall {n X} -> (Fin n -> X) -> Vec X n
