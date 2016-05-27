@@ -5,6 +5,7 @@
 \usepackage{amsfonts}
 \usepackage{stmaryrd}
 \usepackage{upgreek}
+\usepackage{bookmark}
 
 
 \DeclareMathAlphabet{\mathkw}{OT1}{cmss}{bx}{n}
