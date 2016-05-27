@@ -6,6 +6,11 @@
 \usepackage{stmaryrd}
 \usepackage{upgreek}
 
+% Magic for Greek characters in outline, part 1.
+\usepackage[utf8x]{inputenc}
+\usepackage[unicode=true]{hyperref}
+\usepackage{bookmark}
+
 
 \DeclareMathAlphabet{\mathkw}{OT1}{cmss}{bx}{n}
 
@@ -50,7 +55,7 @@
 
 
 \newcommand{\D}[1]{\blue{\mathsf{#1}}}
-\newcommand{\C}[1]{\red{\mathsf{#1}}}
+\renewcommand{\C}[1]{\red{\mathsf{#1}}}
 \newcommand{\F}[1]{\green{\mathsf{#1}}}
 \newcommand{\V}[1]{\purple{\mathit{#1}}}
 \newcommand{\T}[1]{\raisebox{0.02in}{\tiny\green{\textsc{#1}}}}
@@ -60,6 +65,13 @@
 %include lhs2TeX.fmt
 %include lhs2TeX.sty
 %include polycode.fmt
+
+% Magic for Greek characters in outline, part 2.
+\PrerenderUnicode{λ}
+\PrerenderUnicode{Σ}
+%format Sg = "\D{\Upsigma}"
+\DeclareRobustCommand{\TitleLambda}{\texorpdfstring{$\uplambda$}{λ}}
+\DeclareRobustCommand{\TitleSigma}{\texorpdfstring{|Sg|}{Σ}}
 
 %subst keyword a = "\mathkw{" a "}"
 %subst conid a = "\V{" a "}"
@@ -102,8 +114,7 @@ your own dependently typed language, or maybe one day in mine.
 
 %include Vec.lagda
 
-
-\chapter{Simply Typed $\uplambda$-Calculus}
+\chapter{Simply Typed \TitleLambda-Calculus}
 
 %include STLC.lagda
 

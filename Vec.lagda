@@ -46,7 +46,6 @@ infixr 4 _,_
 \end{code}
 
 
-%format Sg = "\D{\Upsigma}"
 %format fst = "\F{fst}"
 %format snd = "\F{snd}"
 %format * = "\F{\times}"
@@ -646,7 +645,7 @@ What other structure does it preserve?
 \end{exe}
 
 
-\section{|Sg|-types and Other Equipment}
+\section{\TitleSigma-types and Other Equipment}
 
 Before we go any further, let us establish that the type |Sg (S : Set)
 (T : S -> Set)| has elements |(s : S) , (t : T s)|, so that the type
