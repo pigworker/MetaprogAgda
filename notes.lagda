@@ -5,6 +5,8 @@
 \usepackage{amsfonts}
 \usepackage{stmaryrd}
 \usepackage{upgreek}
+\usepackage[utf8x]{inputenc}
+\usepackage[unicode=true]{hyperref}
 \usepackage{bookmark}
 
 
@@ -51,7 +53,7 @@
 
 
 \newcommand{\D}[1]{\blue{\mathsf{#1}}}
-\newcommand{\C}[1]{\red{\mathsf{#1}}}
+\renewcommand{\C}[1]{\red{\mathsf{#1}}}
 \newcommand{\F}[1]{\green{\mathsf{#1}}}
 \newcommand{\V}[1]{\purple{\mathit{#1}}}
 \newcommand{\T}[1]{\raisebox{0.02in}{\tiny\green{\textsc{#1}}}}
