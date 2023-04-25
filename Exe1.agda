@@ -75,10 +75,11 @@ record Applicative (F : Set -> Set) : Set1 where
   applicativeEndoFunctor = record { map = _<*>_ o pure }
 open Applicative {{...}} public
 
-applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
-applicativeVec  = record { pure = vec; _<*>_ = vapp }
-endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
-endoFunctorVec  = applicativeEndoFunctor
+instance
+  applicativeVec  : forall {n} -> Applicative \ X -> Vec X n
+  applicativeVec  = record { pure = vec; _<*>_ = vapp }
+  endoFunctorVec  : forall {n} -> EndoFunctor \ X -> Vec X n
+  endoFunctorVec  = applicativeEndoFunctor
 
 applicativeFun : forall {S} -> Applicative \ X -> S -> X
 applicativeFun = record
